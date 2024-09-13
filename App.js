@@ -1,20 +1,29 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, Text, View, Pressable, Image, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { useAppContext, AppProvider } from './context/context.js';
+import SaveLoader from './screens/SaveLoader.js'
+import WelcomeScreen from './screens/WelcomeScreen.js'
+import HomePage from './screens/HomePage.js'
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
+    <AppProvider>
       <StatusBar style="auto" />
-    </View>
+      <AppContent />
+    </AppProvider>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+function AppContent() {
+  const { user } = useAppContext(); // используем контекст внутри компонента AppContent
+
+  return user ? 
+    <HomePage /> 
+    : 
+    <WelcomeScreen />;
+}
+
+
+
