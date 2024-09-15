@@ -2,7 +2,7 @@ import { StyleSheet, TextInput, Text, View, Pressable, Image, Alert } from 'reac
 import React, { useState, useContext } from 'react';
 import { AppContext } from '../context/context.js';
 
-const CONNECTURL = "37.139.62.40"
+const CONNECTURL = "http://37.139.62.40:9000"
 
 export default WelcomeScreen = () => { 
   const [nameWarn, setnameWarn] = useState("")

@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { Audio } from 'expo-av';
 import { useAppContext } from '../context/context.js';
 
-const CONNECTURL = "37.139.62.40"
+const CONNECTURL = "http://37.139.62.40:9000"
 
 export default function HomePage() {
   const { user, setUser } = useAppContext();
@@ -124,7 +124,7 @@ export default function HomePage() {
 
   async function playSound() {
     const { sound } = await Audio.Sound.createAsync(
-      require('../audio/clickVar1.mp3') // путь к вашему звуковому файлу
+      require('../assets/audio/clickVar1.mp3') // путь к вашему звуковому файлу
     );
     setSound(sound);
     await sound.playAsync();
@@ -148,6 +148,15 @@ export default function HomePage() {
   const openChat = () => {
     alert("Да")
   }
+
+  const changeSalmon = () => {
+    alert("Скоро")
+  }
+
+  const settingsMenu = () => {
+    alert("Скоро")
+  }
+
   
   const tapUpBalance = (num) => {
     setBalance(balance+num);
@@ -172,6 +181,45 @@ export default function HomePage() {
   return (
     <ScrollView style={styles.mainWrapper}>
       <View>
+        <View style={styles.userBlock}>
+          <View style={styles.userInfo}>
+            <Text >Твой Лосось</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View>
+                  <Text style={styles.userName}>{user}</Text>
+                </View>
+              </ScrollView>
+          </View>
+
+          <View style={styles.changeSalmon}>
+            <Pressable
+              style={({ pressed }) => [
+                {
+                  backgroundColor: pressed ? '#d1d1d1' : '#841584', // Меняем цвет при нажатии
+                  transform: [{ scale: pressed ? 0.94 : 1 }] // Немного уменьшаем кнопку при нажатии
+                },
+                
+              ]}
+              onPress={changeSalmon}
+              ><Text>Сменить Лосося</Text>
+            </Pressable>
+          </View>
+          <View style={styles.settingsMenu}>
+            <Pressable
+              style={({ pressed }) => [
+                {
+                  backgroundColor: pressed ? '#d1d1d1' : '#841584', // Меняем цвет при нажатии
+                  transform: [{ scale: pressed ? 0.94 : 1 }] // Немного уменьшаем кнопку при нажатии
+                },
+                
+              ]}
+              onPress={settingsMenu}
+              ><Text>Меню</Text>
+            </Pressable>
+          </View>
+
+        </View>
+
         <View style={styles.header}>
 
           <Text style={styles.title}>Прибыль за тап: {countTapList[countTap]}</Text>
@@ -186,14 +234,9 @@ export default function HomePage() {
             ><Text style={styles.upgradeTextButtonStyle}>Прокачать Тап за {upgradeTapPrices[priceUpgradeTap]} </Text>
           </Pressable>
         </View>
-        <View style={styles.userBlock}>
-          <Text style={styles.userName}>{user}</Text>
-        </View>
       </View>
           {/*           */}
       <View style={styles.container}>
-
-        <Text style={styles.title}>Твой Лосось</Text>
 
         <Pressable
           style={({ pressed }) => [
@@ -204,8 +247,11 @@ export default function HomePage() {
             styles.mainButtonStyle
           ]}
           onPress={onPressLearnMore}
-          ><Image
-            source={require('../images/trout.gif')}
+          ><Image style={{
+            width: '100%',
+            height: "100%"
+          }}
+            source={require('../assets/images/trout.gif')}
             resizeMode="contain"
           />
         </Pressable>
@@ -229,7 +275,7 @@ export default function HomePage() {
             ]}
             onPress={openChat}
             ><Image
-              source={require('../images/chatIco.png')}
+              source={require('../assets/images/chatIco.png')}
               style={{
                 width: 50,
                 height: 50,
@@ -248,7 +294,25 @@ export default function HomePage() {
             ]}
             onPress={onPressLearnMore}
             ><Image
-              source={require('../images/top.png')}
+              source={require('../assets/images/top.png')}
+              style={{
+                width: 50,
+                height: 50,
+              }}
+              resizeMode="cover"
+            />
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              {
+                backgroundColor: pressed ? 'red' : '#841584', // Меняем цвет при нажатии
+                transform: [{ scale: pressed ? 0.99 : 1 }] // Немного уменьшаем кнопку при нажатии
+              },
+              styles.topButton
+            ]}
+            onPress={onPressLearnMore}
+            ><Image
+              source={require('../assets/images/top.png')}
               style={{
                 width: 50,
                 height: 50,
@@ -286,7 +350,7 @@ const styles = StyleSheet.create({
 
   // Главные тап кнопки
   mainWrapper: {
-    marginTop: 50,
+    marginTop: 49,
     paddingHorizontal: 4,
     marginBottom: 20, 
   },
@@ -311,17 +375,40 @@ const styles = StyleSheet.create({
     marginTop: 100,
   },
   userBlock: {
-    backgroundColor: "#7d19e0db",
+    backgroundColor: "#b0b0b0db",
     color: "white",
-    borderRadius: 50,
-    
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 9,
+    paddingVertical: 9,
+    borderRadius: 4,
+    marginTop: 40,
+  },
+  userInfo: {
+    width: 110,
+    maxWidth: 110,
+    height: "auto",
+    maxHeight: 67,
   },
   userName: {
-    fontSize: 22,
+    fontSize: 14,
     padding: 5,
     backgroundColor: "#000",
     color: "white",
+    textAlign: "center",
+    flexWrap: 'wrap',
   },
+
+  changeSalmon: {
+    width: 104,
+    padding: 5,
+  },
+
+  settingsMenu: {
+    width: 104
+  },
+
   title: {
     color: "red",
     fontSize: 20
@@ -331,9 +418,13 @@ const styles = StyleSheet.create({
     fontSize: 30
   },
   mainButtonStyle: {
-    padding: 60,
+    padding: 5,
+    height: 190,
+    width: '80%',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "#c7c7c7d2",
-    borderRadius: 70,
+    borderRadius: 100,
   }, 
   mainTextButtonStyle: {
     color: 'white',

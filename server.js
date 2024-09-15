@@ -4,8 +4,8 @@ const mysql = require('mysql');
 const app = express();
 const port = 9000;
 
-// Создаем соединение с базой данных
-const db = mysql.createConnection({
+const pool = mysql.createPool({
+  connectionLimit: 10, // Устанавливаем лимит соединений
   host: '37.139.62.40',
   user: 'root',
   password: 'Ex239763251',
@@ -20,12 +20,25 @@ app.use((req, res, next) => {
   next();
 });
 
-db.connect((err) => {
+pool.getConnection((err, connection) => {
   if (err) {
     console.error('Ошибка подключения к базе данных:', err.stack);
     return;
   }
-  console.log('Подключено к базе данных как id ' + db.threadId);
+  console.log('Подключено к базе данных как id ' + connection.threadId);
+
+  // Освобождаем соединение после успешного подключения
+  connection.release();
+});
+
+pool.getConnection((err, connection) => {
+  if (err) throw err;
+  // Используй соединение
+  connection.query('SELECT * FROM regUsers', (error, results) => {
+    connection.release(); // Обязательно освободи соединение
+    if (error) throw error;
+    console.log(results);
+  });
 });
 
 
@@ -41,7 +54,7 @@ app.post('/register', (req, res) => {
   
   const insertQuery = 'INSERT INTO regUsers (user, regTime) VALUES (?, ?)';
   
-  db.query(insertQuery, [checkedNewName, formattedDatetime], (error, results, fields) => {
+  pool.query(insertQuery, [checkedNewName, formattedDatetime], (error, results, fields) => {
     if (error) {
       console.error('Ошибка при выполнении запроса:', error);
       res.status(500).json({ success: false, message: 'Ошибка при записи времени входа' });
@@ -59,7 +72,7 @@ app.delete('/delete-account', (req, res) => {
 
   // Удалить заявки пользователя
   const deleteUserReg = 'DELETE FROM regUsers WHERE user = ?';
-  db.query(deleteUserReg, [user], (error, results) => {
+  pool.query(deleteUserReg, [user], (error, results) => {
     if (error) {
       console.error('Ошибка при удалении userReg:', error);
       res.status(500).json({ success: false, message: 'Ошибка при userReg' });
@@ -69,7 +82,7 @@ app.delete('/delete-account', (req, res) => {
 
 
     // const deleteUserHistory = 'DELETE FROM history WHERE login = ?';
-    // db.query(deleteUserHistory, [login], (error, results) => {
+    // pool.query(deleteUserHistory, [login], (error, results) => {
     //   if (error) {
     //     console.error('Ошибка при удалении посещений пользователя:', error);
     //     res.status(500).json({ success: false, message: 'Ошибка при удалении посещений пользователя' });
@@ -79,7 +92,7 @@ app.delete('/delete-account', (req, res) => {
 
     // // Удалить пользователя
     // const deleteUserQuery = 'DELETE FROM authed WHERE login = ?';
-    // db.query(deleteUserQuery, [login], (error, results) => {
+    // pool.query(deleteUserQuery, [login], (error, results) => {
     //   if (error) {
     //     console.error('Ошибка при удалении пользователя:', error);
     //     res.status(500).json({ success: false, message: 'Ошибка при удалении пользователя' });

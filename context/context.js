@@ -20,7 +20,7 @@ export const AppProvider = ({ children }) => {
     return null;
   };
   
-  // Загрузить данные при старте приложения
+  // Загрузить юзера при старте приложения
   React.useEffect(() => {
     loadData('user').then(savedUser => {
       if (savedUser) setUser(savedUser);
