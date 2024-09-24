@@ -5,10 +5,15 @@ const app = express();
 const port = 9000;
 
 const pool = mysql.createPool({
-  connectionLimit: 10, // Устанавливаем лимит соединений
-  host: '37.139.62.40',
+  // connectionLimit: 100, // Устанавливаем лимит соединений
+  // host: '37.139.62.40',
+  // user: 'root',
+  // password: 'Ex239763251',
+  // database: 'SalmonGame'
+  connectionLimit: 100, // Устанавливаем лимит соединений
+  host: 'localhost',
   user: 'root',
-  password: 'Ex239763251',
+  password: '',
   database: 'SalmonGame'
 });
 
@@ -31,46 +36,46 @@ pool.getConnection((err, connection) => {
   connection.release();
 });
 
-pool.getConnection((err, connection) => {
-  if (err) throw err;
-  // Используй соединение
-  connection.query('SELECT * FROM regUsers', (error, results) => {
-    connection.release(); // Обязательно освободи соединение
-    if (error) throw error;
-    console.log(results);
-  });
-});
-
-
 
 
 app.post('/register', (req, res) => {
-  const { checkedNewName, currentTime } = req.body;
-  console.log(checkedNewName)
-  const datetime = new Date(currentTime);
-  
-  datetime.setHours(datetime.getHours() + 3);
-  const formattedDatetime = datetime.toISOString().replace('T', ' ').slice(0, 19);
-  
-  const insertQuery = 'INSERT INTO regUsers (user, regTime) VALUES (?, ?)';
-  
-  pool.query(insertQuery, [checkedNewName, formattedDatetime], (error, results, fields) => {
+  const { checkedNewName } = req.body;
+
+  const query = 'SELECT COUNT(*) AS count FROM regUsers WHERE user =?';
+  pool.query(query, [checkedNewName], (error, results, fields) => {
     if (error) {
       console.error('Ошибка при выполнении запроса:', error);
-      res.status(500).json({ success: false, message: 'Ошибка при записи времени входа' });
+      res.status(500).json({ success: false });
       return;
     }
 
-    res.status(200).json({ success: true, message: 'Время входа успешно записано' });
+    if (results[0].count > 0) {
+      res.status(400).json({ success: "already user" });
+    } else {
+      // Регистрация нового пользователя
+      const getCurrentTimeFormatted = () => new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+      const currentTime = getCurrentTimeFormatted(); // Например: 2024-09-17 14:35:22
+      
+      const insertQuery = 'INSERT INTO regUsers (user, regTime) VALUES (?, ?)';
+      
+      pool.query(insertQuery, [checkedNewName, currentTime], (error, results, fields) => {
+        if (error) {
+          console.error('Ошибка при выполнении запроса:', error);
+          res.status(500).json({ success: false, message: 'Ошибка при записи времени входа' });
+          return;
+        }
+
+        res.status(200).json({ success: true, message: 'Время входа успешно записано' });
+      });
+    }
   });
 });
-
-
 
 app.delete('/delete-account', (req, res) => {
   const { user } = req.body;
 
-  // Удалить заявки пользователя
+  // Удалить лосося пользователя
   const deleteUserReg = 'DELETE FROM regUsers WHERE user = ?';
   pool.query(deleteUserReg, [user], (error, results) => {
     if (error) {
@@ -81,13 +86,13 @@ app.delete('/delete-account', (req, res) => {
     res.status(200).json({ success: true, message: 'Пользователь удален.' });
 
 
-    // const deleteUserHistory = 'DELETE FROM history WHERE login = ?';
-    // pool.query(deleteUserHistory, [login], (error, results) => {
-    //   if (error) {
-    //     console.error('Ошибка при удалении посещений пользователя:', error);
-    //     res.status(500).json({ success: false, message: 'Ошибка при удалении посещений пользователя' });
-    //     return;
-    //   }})
+    const deleteUserRating = 'DELETE FROM userRating WHERE user = ?';
+    pool.query(deleteUserRating, [user], (error, results) => {
+      if (error) {
+        console.error('Ошибка при удалении рейтинга пользователя:', error);
+        res.status(500).json({ success: false, message: 'Ошибка при удалении рейтинга пользователя' });
+        return;
+      }})
 
 
     // // Удалить пользователя
@@ -103,6 +108,128 @@ app.delete('/delete-account', (req, res) => {
     // });
   });
 });
+
+app.get('/gettoprating', (req, res) => {
+  // Запрос для получения всех сообщений, сортированных по времени
+  const query = 'SELECT * FROM userRating ORDER BY balance DESC;';
+  
+  pool.query(query, (error, results) => {
+    if (error) {
+      console.error('Ошибка при выполнении запроса на получение рейтинга:', error);
+      res.status(500).json({ success: false, message: 'Ошибка при получении рейтинга' });
+      return;
+    }
+
+    // Возвращаем список рейтинга
+    res.status(200).json({ success: true, rating: results });
+  });
+});
+
+app.post('/createyourrating', (req, res) => {
+  const { checkedNewName, balance } = req.body;
+
+  const insertQuery = `INSERT INTO userRating (user, balance) VALUES (?, ?)`
+  
+  pool.query(insertQuery, [checkedNewName, balance], (error, results) => {
+    if (error) {
+      console.error('Ошибка при отправке баланса на сервер:', error);
+      res.status(500).json({ success: false, message: 'Ошибка баланса' });
+      return;
+    }
+
+    res.status(200).json({ success: true, message: 'Личный рейтинг обновлен' });
+  });
+});
+
+
+app.post('/postyourrating', (req, res) => {
+  const { user, balance } = req.body;
+
+  const insertQuery = `UPDATE userRating SET balance = ? WHERE user = ?`
+  
+  pool.query(insertQuery, [balance, user], (error, results) => {
+    if (error) {
+      console.error('Ошибка при отправке баланса на сервер:', error);
+      res.status(500).json({ success: false, message: 'Ошибка баланса' });
+      return;
+    }
+
+    res.status(200).json({ success: true, message: 'Личный рейтинг обновлен' });
+  });
+});
+
+
+
+
+app.get('/getmessagesglobalchat', (req, res) => {
+  // Запрос для получения всех сообщений, сортированных по времени
+  const query = 'SELECT * FROM chatlogs ORDER BY time ASC;';
+  
+  pool.query(query, (error, results) => {
+    if (error) {
+      console.error('Ошибка при выполнении запроса на получение сообщений:', error);
+      res.status(500).json({ success: false, message: 'Ошибка при получении сообщений' });
+      return;
+    }
+
+    // Возвращаем список сообщений
+    res.status(200).json({ success: true, messages: results });
+  });
+});
+
+
+app.post('/sendmessageglobalchat', (req, res) => {
+  const { user, sendingMessage } = req.body;
+
+  const getCurrentTimeFormatted = () => new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const currentTime = getCurrentTimeFormatted(); // Например: 2024-09-17 14:35:22
+
+
+  // Получаем текущее количество сообщений пользователя, чтобы создать уникальный UMI
+  const umiQuery = 'SELECT COUNT(*) as messageCount FROM chatlogs WHERE user = ?';
+
+  pool.query(umiQuery, [user], (error, results) => {
+    if (error) {
+      console.error('Ошибка при выполнении запроса на получение количества сообщений:', error);
+      res.status(500).json({ success: false, message: 'Ошибка при получении количества сообщений' });
+      return;
+    }
+
+    // Получаем UMI (messageCount + 1)
+    const umi = results[0].messageCount + 1;
+
+    // Вставляем новое сообщение в базу данных с UMI
+    const insertQuery = 'INSERT INTO chatlogs (user, message, time, UMI) VALUES (?, ?, ?, ?)';
+    
+    pool.query(insertQuery, [user, sendingMessage, currentTime, umi], (error, results) => {
+      if (error) {
+        console.error('Ошибка при выполнении запроса на отправку сообщения:', error);
+        res.status(500).json({ success: false, message: 'Ошибка при отправке сообщения' });
+        return;
+      }
+
+      res.status(200).json({ success: true, message: 'Сообщение добавлено', umi });
+    });
+  });
+});
+
+
+app.get('/checkappinfo', (req, res) => {
+  // Запрос для получения всех сообщений, сортированных по времени
+  const query = 'SELECT version FROM actualInfoApp';
+  
+  pool.query(query, (error, results) => {
+    if (error) {
+      console.error('Ошибка при полчении инфо о приложении:', error);
+      res.status(500).json({ success: false, message: 'Ошибка при получении данных о приложении' });
+      return;
+    }
+
+    // Возвращаем список сообщений
+    res.status(200).json({ success: true, info: results });
+  });
+});
+
 
 
 

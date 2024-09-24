@@ -1,23 +1,42 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
-import { ScrollView, StyleSheet, TextInput, Text, View, Pressable, Image, Alert } from 'react-native';
-import React, { useState } from 'react';
+import { Platform, ScrollView, StyleSheet, TextInput, Text, View, Pressable, Image, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import NetInfo from '@react-native-community/netinfo';
+
 import { Audio } from 'expo-av';
 import { useAppContext } from '../context/context.js';
 
-const CONNECTURL = "http://37.139.62.40:9000"
 
-export default function HomePage() {
+// const CONNECTURL = "http://37.139.62.40:9000"
+const CONNECTURL = Platform.OS === 'ios' ? 'http://localhost:9000' : 'http://10.0.2.2:9000';
+
+export default function HomePage( { navigation } ) {
+  const oldVersion = "0.9.1"
+  const { blockedVersion, setBlockedVersion } = useAppContext();
+
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+
   const { user, setUser } = useAppContext();
   const [balance, setBalance] = useState(0);
+  const balanceRef = useRef(balance);
   const [countTap, setcountTap] = useState(0);
   const [priceUpgradeTap, setpriceUpgradeTap] = useState(0);
-  const upgradeTapPrices = [50, 200, 450, 800, 1200, 2500, 5000, 8000, 15000, 30000, 60000, 85000, 150000, 300000, 450000, 780000, 2000000, 5000000, 10000000]
-  const countTapList = [1, 2, 3, 6, 8, 11, 13, 15, 16, 20, 25, 30, 40, 50, 80, 100, 150, 250, 500]
+  const upgradeTapPrices = [60, 250, 550, 1300, 2900, 4800, 7000, 12500, 17000, 38000, 65000, 95000, 180000, 330000, 490000, 880000, 2000000, 5000000, 10000000]
+  const countTapList = [1, 2, 3, 6, 8, 11, 13, 15, 16, 20, 25, 30, 40, 50, 70, 90, 130, 220, 404]
 
   const [sound, setSound] = useState();
 
+  useEffect(() => {
+    balanceRef.current = balance;
+  }, [balance]);
 
+
+  const checkInternetConnection = async () => {
+    const state = await NetInfo.fetch();
+    return state.isConnected;
+  };
+  
   const saveData = async (key, value) => {
     try {
       await AsyncStorage.setItem(key, JSON.stringify(value));
@@ -44,7 +63,10 @@ export default function HomePage() {
   // Загрузить данные при старте приложения
   React.useEffect(() => {
     loadData('balance').then(savedBalance => {
-      if (savedBalance) setBalance(savedBalance);
+      if (savedBalance) {
+        setBalance(savedBalance)
+      };
+      
     });
 
     loadData('countTap').then(countTap => {
@@ -54,6 +76,8 @@ export default function HomePage() {
     loadData('priceUpgradeTap').then(priceUpgradeTap => {
       if (priceUpgradeTap) setpriceUpgradeTap(priceUpgradeTap);
     });
+
+    setIsDataLoaded(true);
   }, []);
 
   // Сохранение данных при изменении состояния
@@ -64,9 +88,6 @@ export default function HomePage() {
       saveData('countTap', countTap)
       saveData('priceUpgradeTap', priceUpgradeTap)
   }, [user, balance, countTap, priceUpgradeTap]);
-
-
-
 
 
 
@@ -82,44 +103,48 @@ export default function HomePage() {
 
       const data = await response.json()
       if (data.success) {
+        // Удаляем данные из AsyncStorage
+        await AsyncStorage.clear()
+        
+        // Сбрасываем состояния
+        setUser(null);
+        setBalance(0);
+        setcountTap(0);
+        setpriceUpgradeTap(0);
+
         alert('Прогресс успешно сброшен!');
       } else {
         alert('Ошибка при сбросе!');
       }
-      // Удаляем данные из AsyncStorage
-      await AsyncStorage.clear()
-      
-      // Сбрасываем состояния
-      setUser(null);
-      setBalance(0);
-      setcountTap(0);
-      setpriceUpgradeTap(0);
       
     } catch (e) {
       console.error('Ошибка сброса прогресса', e);
     }
   };
 
-  const confirmResetProgress = () => {
-    Alert.alert(
-      "Подтверждение удаления", // Заголовок
-      "Вы уверены, что хотите удалить профиль?", // Сообщение
-      [
-        {
-          text: "Отмена", // Текст кнопки отмены
-          style: "cancel", // Стиль кнопки (cancel делает текст жирным)
-        },
-        {
-          text: "Конечно", // Текст кнопки удаления
-          onPress: resetProgress, // Действие при подтверждении (вызываем функцию сброса)
-          style: "destructive", // Стиль для кнопки удаления (подсветит её красным)
-        },
-      ],
-      { cancelable: true } // Позволяет закрывать меню нажатием вне области
-    );
+  const confirmResetProgress = async () => {
+    const connected = await checkInternetConnection();
+    if (connected) {
+      Alert.alert(
+        "Сбросить прогресс?", // Заголовок
+        `Вы уверены, что хотите сбросить прогресс лосося ${user}?`, // Сообщение
+        [
+          {
+            text: "Отмена", // Текст кнопки отмены
+            style: "cancel", // Стиль кнопки (cancel делает текст жирным)
+          },
+          {
+            text: "Конечно", // Текст кнопки удаления
+            onPress: resetProgress, // Действие при подтверждении (вызываем функцию сброса)
+            style: "destructive", // Стиль для кнопки удаления (подсветит её красным)
+          },
+        ],
+        { cancelable: true } // Позволяет закрывать меню нажатием вне области
+      );
+    } else {
+      alert("Нет подключения к интернету!");
+    }
   };
-
-
 
 
   async function playSound() {
@@ -140,24 +165,47 @@ export default function HomePage() {
   }, [sound]);
 
 
+  const changeSalmon = () => {
+    alert("Пока что лосоcь один")
+  }
+
+  const settingsMenu = () => {
+    alert("Настройки еще недоступны")
+  }
+
+
   const onPressLearnMore = () => {
     tapUpBalance(countTapList[countTap])
     playSound()
   }
 
-  const openChat = () => {
-    alert("Да")
-  }
+  const openRating = async () => {
+    const connected = await checkInternetConnection();
+    if (connected) {
+      navigation.navigate('RatingScreen');
+    } else {
+      alert("Нет подключения к интернету!");
+    }
+  };
 
-  const changeSalmon = () => {
-    alert("Скоро")
-  }
-
-  const settingsMenu = () => {
-    alert("Скоро")
-  }
-
+  const openChat = async () => {
+    const connected = await checkInternetConnection();
+    if (connected) {
+      navigation.navigate('ChatScreen');
+    } else {
+      alert("Нет подключения к интернету!");
+    }
+  };
   
+  const openBattle = async () => {
+    const connected = await checkInternetConnection();
+    if (connected) {
+      alert("Coming Soon...");
+    } else {
+      alert("Нет подключения к интернету!");
+    }
+  };
+
   const tapUpBalance = (num) => {
     setBalance(balance+num);
   };
@@ -178,14 +226,90 @@ export default function HomePage() {
     setBalance(balance+200)
   }
 
+
+  const postYourRating = async () => {
+    console.log("Отправка...")
+    const connected = await checkInternetConnection();
+    if (connected && isDataLoaded) {
+      try {
+        const response = await fetch(`${CONNECTURL}/postyourrating`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ user, balance: balanceRef.current }),
+        });
+  
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data.message);
+        } else {
+          console.log(`Личный рейтинг отправлен ${balanceRef.current}`);
+        }
+    
+      } catch (error) {
+        console.error('Ошибка при отправке данных:', error);
+      }
+    } else {
+      console.log(`Нет интернета ${balanceRef.current}`)
+    }
+  }
+
+
+  const checkInfo = async () => {
+    try {
+      const response = await fetch(`${CONNECTURL}/checkappinfo`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    
+      const data = await response.json();
+      if (data.info[0].version !== oldVersion) { 
+        // Если массив сообщений изменился, обновляем state
+        
+        setBlockedVersion(true)
+        
+      }
+
+    } catch (error) {
+      console.error('Ошибка при получения сообщений:', error);
+    }
+  }
+
+  
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      checkInfo()
+      if (isDataLoaded) {
+        postYourRating()
+      }
+    });
+    
+
+    // Перед отправкой сделать проверку на версию!!!!!!!!!!!!!!!!!
+
+    const intervalId = setInterval(postYourRating, 60000); // Проверка каждые 60 секунд
+  
+    // Очистка при размонтировании компонента и удалении слушателя
+    return () => {
+      clearInterval(intervalId);
+      unsubscribe();
+    };
+  }, [navigation, balance]);
+  setTimeout(postYourRating, 1000)
+
   return (
     <ScrollView style={styles.mainWrapper}>
       <View>
         <View style={styles.userBlock}>
           <View style={styles.userInfo}>
-            <Text >Твой Лосось</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View>
+            <Text style={styles.yourSalmonText}>Твой Лосось</Text>
+              <ScrollView style={styles.scrollUsername} horizontal showsHorizontalScrollIndicator={false}
+               contentContainerStyle={styles.scrollUsernameContentContainer}>
+                <View style={styles.wrapperUsername}>
                   <Text style={styles.userName}>{user}</Text>
                 </View>
               </ScrollView>
@@ -198,10 +322,10 @@ export default function HomePage() {
                   backgroundColor: pressed ? '#d1d1d1' : '#841584', // Меняем цвет при нажатии
                   transform: [{ scale: pressed ? 0.94 : 1 }] // Немного уменьшаем кнопку при нажатии
                 },
-                
+                styles.changeSalmonButton,
               ]}
               onPress={changeSalmon}
-              ><Text>Сменить Лосося</Text>
+              ><Text style={styles.changeSalmonText}>Сменить Лосося</Text>
             </Pressable>
           </View>
           <View style={styles.settingsMenu}>
@@ -211,10 +335,10 @@ export default function HomePage() {
                   backgroundColor: pressed ? '#d1d1d1' : '#841584', // Меняем цвет при нажатии
                   transform: [{ scale: pressed ? 0.94 : 1 }] // Немного уменьшаем кнопку при нажатии
                 },
-                
+                styles.settingsMenuButton,
               ]}
               onPress={settingsMenu}
-              ><Text>Меню</Text>
+              ><Text style={styles.settingsMenuText}>Меню</Text>
             </Pressable>
           </View>
 
@@ -271,6 +395,24 @@ export default function HomePage() {
                 backgroundColor: pressed ? 'red' : '#841584', // Меняем цвет при нажатии
                 transform: [{ scale: pressed ? 0.99 : 1 }] // Немного уменьшаем кнопку при нажатии
               },
+              styles.topButton
+            ]}
+            onPress={openRating}
+            ><Image
+              source={require('../assets/images/top.png')}
+              style={{
+                width: 50,
+                height: 50,
+              }}
+              resizeMode="cover"
+            />
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              {
+                backgroundColor: pressed ? 'red' : '#841584', // Меняем цвет при нажатии
+                transform: [{ scale: pressed ? 0.99 : 1 }] // Немного уменьшаем кнопку при нажатии
+              },
               styles.chatButton
             ]}
             onPress={openChat}
@@ -283,36 +425,17 @@ export default function HomePage() {
               resizeMode="cover"
             />
           </Pressable>
-
           <Pressable
             style={({ pressed }) => [
               {
                 backgroundColor: pressed ? 'red' : '#841584', // Меняем цвет при нажатии
                 transform: [{ scale: pressed ? 0.99 : 1 }] // Немного уменьшаем кнопку при нажатии
               },
-              styles.topButton
+              styles.battleButton
             ]}
-            onPress={onPressLearnMore}
+            onPress={openBattle}
             ><Image
-              source={require('../assets/images/top.png')}
-              style={{
-                width: 50,
-                height: 50,
-              }}
-              resizeMode="cover"
-            />
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [
-              {
-                backgroundColor: pressed ? 'red' : '#841584', // Меняем цвет при нажатии
-                transform: [{ scale: pressed ? 0.99 : 1 }] // Немного уменьшаем кнопку при нажатии
-              },
-              styles.topButton
-            ]}
-            onPress={onPressLearnMore}
-            ><Image
-              source={require('../assets/images/top.png')}
+              source={require('../assets/images/battleIcon.png')}
               style={{
                 width: 50,
                 height: 50,
@@ -341,13 +464,6 @@ export default function HomePage() {
 }
 
 const styles = StyleSheet.create({
-  warnSetNickname: {
-    padding: 4,
-    backgroundColor: "#ff4f4fdb",
-    color: "white",
-    fontSize: 16,
-  },
-
   // Главные тап кнопки
   mainWrapper: {
     marginTop: 49,
@@ -386,17 +502,38 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
   userInfo: {
-    width: 110,
-    maxWidth: 110,
+    width: 104,
+    maxWidth: 104,
     height: "auto",
     maxHeight: 67,
   },
+
+  yourSalmonText: {
+    fontSize: 11,
+    textAlign: "center"
+  },
+
+  scrollUsername: {
+    borderTopWidth: 2,       // Толщина рамки
+    borderTopColor: '#545454db',   // Цвет рамки
+    borderStyle: 'solid', // Тип рамки
+    borderTopLeftRadius:8,
+    borderTopRightRadius: 8,
+    paddingHorizontal: 3,
+    marginTop: 5,
+  },
+
+
+  scrollUsernameContentContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',    // Центрирование содержимого
+    alignItems: 'center',
+  },
+
   userName: {
-    fontSize: 14,
-    padding: 5,
-    backgroundColor: "#000",
+    padding: 4,
+    fontSize: 15,
     color: "white",
-    textAlign: "center",
     flexWrap: 'wrap',
   },
 
@@ -405,8 +542,24 @@ const styles = StyleSheet.create({
     padding: 5,
   },
 
+  changeSalmonButton: {
+    borderRadius: 40
+  },
+
+  changeSalmonText: {
+    textAlign: "center"
+  },
+
   settingsMenu: {
     width: 104
+  },
+
+  settingsMenuButton: {
+    borderRadius: 40,
+  },
+
+  settingsMenuText: {
+    textAlign: "center"
   },
 
   title: {
@@ -442,6 +595,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#c7c7c7d2",
     borderRadius: 30,
   },
+  battleButton: {
+    padding: 10,
+    backgroundColor: "#c7c7c7d2",
+    borderRadius: 30,
+  },
+  
   // Серверные кнопки 
 
   resetText: {

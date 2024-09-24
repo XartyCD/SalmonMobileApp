@@ -6,6 +6,7 @@ export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [blockedVersion, setBlockedVersion] = useState(false);
 
   const loadData = async (key) => {
     try {
@@ -28,7 +29,7 @@ export const AppProvider = ({ children }) => {
   }, []);
 
   return (
-    <AppContext.Provider value={{ user, setUser }}>
+    <AppContext.Provider value={{ user, setUser, blockedVersion, setBlockedVersion }}>
       {children}
     </AppContext.Provider>
   );
