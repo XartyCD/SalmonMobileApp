@@ -9,7 +9,8 @@ import { useAppContext } from '../context/context.js';
 
 
 // const CONNECTURL = "http://37.139.62.40:9000"
-const CONNECTURL = Platform.OS === 'ios' ? 'http://localhost:9000' : 'http://10.0.2.2:9000';
+//const CONNECTURL = Platform.OS === 'ios' ? 'http://localhost:9000' : 'http://10.0.2.2:9000';
+
 
 export default function HomePage( { navigation } ) {
   const oldVersion = "0.9.1"
@@ -60,28 +61,48 @@ export default function HomePage( { navigation } ) {
     return null;
   };
   
-  // Загрузить данные при старте приложения
-  React.useEffect(() => {
-    loadData('balance').then(savedBalance => {
-      if (savedBalance) {
-        setBalance(savedBalance)
-      };
-      
-    });
-
-    loadData('countTap').then(countTap => {
+  // Загрузить данные при старте приложения (срабатывает ТОЛЬКО при первом ренддере, (переключение вкладок не перерендеривает))
+  const loadAppData = async () => {
+    try {
+      // Загружаем данные из AsyncStorage
+      const savedBalance = await loadData('balance');
+      const countTap = await loadData('countTap');
+      const priceUpgradeTap = await loadData('priceUpgradeTap');
+  
+      // Устанавливаем состояние, если данные найдены
+      if (savedBalance) setBalance(savedBalance);
       if (countTap) setcountTap(countTap);
-    });
-
-    loadData('priceUpgradeTap').then(priceUpgradeTap => {
       if (priceUpgradeTap) setpriceUpgradeTap(priceUpgradeTap);
-    });
+  
+      // Возвращаем true, если все данные успешно загружены
+      return true;
+    } catch (error) {
+      console.error('Ошибка при загрузке данных:', error);
+      // Возвращаем false, если произошла ошибка
+      return false;
+    }
+  };
 
-    setIsDataLoaded(true);
-  }, []);
+// Первичный запуск всего важного
+
+useEffect(() => {
+  const initializeApp = async () => {
+    const result = await loadAppData();
+    const connected = await checkInternetConnection();
+    if (result && connected) {
+      setIsDataLoaded(true);
+      postYourRating()
+    }
+    console.log('Загрузка прогресса прошла:', result ? 'успешно' : 'с ошибкой', );
+  };
+
+  initializeApp(); // Запускаем асинхронную инициализацию
+
+}, []);
+
 
   // Сохранение данных при изменении состояния
-  React.useEffect(() => {
+  useEffect(() => {
     if (user !== null) {
       saveData('user', user)};
       saveData('balance', balance)
@@ -156,7 +177,7 @@ export default function HomePage( { navigation } ) {
   }
 
   // Освобождение ресурсов при размонтировании компонента
-  React.useEffect(() => {
+  useEffect(() => {
     return sound
       ? () => {
           sound.unloadAsync();
@@ -230,7 +251,7 @@ export default function HomePage( { navigation } ) {
   const postYourRating = async () => {
     console.log("Отправка...")
     const connected = await checkInternetConnection();
-    if (connected && isDataLoaded) {
+    if (connected) {
       try {
         const response = await fetch(`${CONNECTURL}/postyourrating`, {
           method: 'POST',
@@ -268,7 +289,6 @@ export default function HomePage( { navigation } ) {
     
       const data = await response.json();
       if (data.info[0].version !== oldVersion) { 
-        // Если массив сообщений изменился, обновляем state
         
         setBlockedVersion(true)
         
@@ -299,7 +319,6 @@ export default function HomePage( { navigation } ) {
       unsubscribe();
     };
   }, [navigation, balance]);
-  setTimeout(postYourRating, 1000)
 
   return (
     <ScrollView style={styles.mainWrapper}>

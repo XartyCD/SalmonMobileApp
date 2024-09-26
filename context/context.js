@@ -8,6 +8,7 @@ export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [blockedVersion, setBlockedVersion] = useState(false);
 
+
   const loadData = async (key) => {
     try {
       const value = await AsyncStorage.getItem(key);
@@ -20,6 +21,7 @@ export const AppProvider = ({ children }) => {
     }
     return null;
   };
+
   
   // Загрузить юзера при старте приложения
   React.useEffect(() => {

@@ -14,7 +14,8 @@ import { createStackNavigator } from '@react-navigation/stack';
 
 
 // const CONNECTURL = "http://37.139.62.40:9000"
-const CONNECTURL = Platform.OS === 'ios' ? 'http://localhost:9000' : 'http://10.0.2.2:9000';
+// const CONNECTURL = Platform.OS === 'ios' ? 'http://localhost:9000' : 'http://10.0.2.2:9000';
+
 
 const Stack = createStackNavigator();
 
