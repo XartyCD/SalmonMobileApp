@@ -4,15 +4,16 @@ import { AppContext } from '../context/context.js';
 import NetInfo from '@react-native-community/netinfo';
 
 
-// const CONNECTURL = "http://37.139.62.40:9000"
-const CONNECTURL = Platform.OS === 'ios' ? 'http://localhost:9000' : 'http://10.0.2.2:9000';
+const CONNECTURL = "http://194.87.215.107:9000"
+// const CONNECTURL = Platform.OS === 'ios' ? 'http://localhost:9000' : 'http://10.0.2.2:9000';
+// const CONNECTURL = 'https://4979-2604-6600-1c6-2000-8331-32a5-fd3f-f347.ngrok-free.app'
 
 
 export default WelcomeScreen = ( { navigation } ) => { 
 
   const [isConnected, setIsConnected] = useState(false);
   const isConnectedRef = useRef(isConnected);
-  const [nameWarn, setnameWarn] = useState("")
+  const [nameWarn, setnameWarn] = useState("хзз")
   const { user, setUser } = useContext(AppContext);
   const [checkedNewName, setCheckNewName] = useState(null);
   const blackListNames = ["nigger", "Ниггер", "Нигер", "Зеленский", "Макрон", "Niga", "Nigga", "Негр", "Negr", "Райан Гослинг", "Пабло Эксобар", 
@@ -97,7 +98,7 @@ export default WelcomeScreen = ( { navigation } ) => {
               console.log('Ответ сервера:', data);
         
               setUser(checkedNewName); // Записываем валидное введенное имя в состояние
-              // navigation.navigate('HomePage')
+              navigation.navigate('HomePage')
             }
         
           } catch (error) {

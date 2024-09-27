@@ -11,10 +11,12 @@ import ChatScreen from './screens/ChatScreen.js';
 
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import 'react-native-gesture-handler';
 
 
-// const CONNECTURL = "http://37.139.62.40:9000"
+const CONNECTURL = "http://194.87.215.107:9000"
 // const CONNECTURL = Platform.OS === 'ios' ? 'http://localhost:9000' : 'http://10.0.2.2:9000';
+// const CONNECTURL = 'https://4979-2604-6600-1c6-2000-8331-32a5-fd3f-f347.ngrok-free.app'
 
 
 const Stack = createStackNavigator();

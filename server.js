@@ -5,23 +5,26 @@ const app = express();
 const port = 9000;
 
 const pool = mysql.createPool({
-  // connectionLimit: 100, // Устанавливаем лимит соединений
-  // host: '37.139.62.40',
-  // user: 'root',
-  // password: 'Ex239763251',
-  // database: 'SalmonGame'
   connectionLimit: 100, // Устанавливаем лимит соединений
-  host: 'localhost',
+  host: '194.87.215.107',
   user: 'root',
-  password: '',
+  password: '7G$11te2iOH8^q&!qU71E2T82lO0$%sc6Xizk!I82',  
   database: 'SalmonGame'
+  // connectionLimit: 100, // Устанавливаем лимит соединений ;
+  // host: 'localhost',
+  // user: 'root',
+  // password: '',
+  // database: 'SalmonGame'
 });
+
+
 
 app.use(express.json())
 
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Access-Control-Allow-Origin', '*');  // Разрешить любые источники
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');  // Разрешить методы
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');  // Указать заголовки
   next();
 });
 
@@ -40,7 +43,7 @@ pool.getConnection((err, connection) => {
 
 app.post('/register', (req, res) => {
   const { checkedNewName } = req.body;
-
+  console.log(checkedNewName)
   const query = 'SELECT COUNT(*) AS count FROM regUsers WHERE user =?';
   pool.query(query, [checkedNewName], (error, results, fields) => {
     if (error) {
