@@ -1,20 +1,24 @@
 const express = require('express');
 const mysql = require('mysql');
 
+const http = require('http'); // Для создания HTTP-сервера
+const { Server } = require('socket.io'); // Импортируем socket.io
+
 const app = express();
 const port = 9000;
 
+
 const pool = mysql.createPool({
-  connectionLimit: 100, // Устанавливаем лимит соединений
-  host: '194.87.215.107',
-  user: 'root',
-  password: '7G$11te2iOH8^q&!qU71E2T82lO0$%sc6Xizk!I82',  
-  database: 'SalmonGame'
-  // connectionLimit: 100, // Устанавливаем лимит соединений ;
-  // host: 'localhost',
+  // connectionLimit: 100, // Устанавливаем лимит соединений
+  // host: '31.129.35.98',
   // user: 'root',
-  // password: '',
+  // password: 'x@Wg^n$&s72r$T1yTh*17a2^q1i7*1vi^a*tl6^&te=1o#71a8',  
   // database: 'SalmonGame'
+  connectionLimit: 100, // Устанавливаем лимит соединений ;
+  host: 'localhost',
+  user: 'root',
+  password: '',
+  database: 'SalmonGame'
 });
 
 
@@ -215,6 +219,12 @@ app.post('/sendmessageglobalchat', (req, res) => {
     });
   });
 });
+
+
+
+
+
+
 
 
 app.get('/checkappinfo', (req, res) => {

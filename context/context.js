@@ -1,10 +1,20 @@
 import React, { createContext, useContext, useState } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Создаем контекст
 export const AppContext = createContext();
 
+
+
+
 export const AppProvider = ({ children }) => {
+  const appVersion = "0.8.1"
+
+  const CONNECTURL = "https://yaprikolist.ru"
+  // const CONNECTURL = Platform.OS === 'ios' ? 'http://localhost:9000' : 'http://10.0.2.2:9000';
+  // const CONNECTURL = 'https://4979-2604-6600-1c6-2000-8331-32a5-fd3f-f347.ngrok-free.app'
+
   const [user, setUser] = useState(null);
   const [blockedVersion, setBlockedVersion] = useState(false);
 
@@ -30,8 +40,31 @@ export const AppProvider = ({ children }) => {
     });
   }, []);
 
+
+  const checkInfoApp = async () => {
+    try {
+      const response = await fetch(`${CONNECTURL}/checkappinfo`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    
+      const data = await response.json();
+      if (data.info[0].version !== appVersion) { 
+        
+        setBlockedVersion(true)
+        
+      }
+
+    } catch (error) {
+      console.error('Ошибка при получения сообщений:', error);
+    }
+  }
+
+
   return (
-    <AppContext.Provider value={{ user, setUser, blockedVersion, setBlockedVersion }}>
+    <AppContext.Provider value={{ appVersion, user, setUser, blockedVersion, checkInfoApp, CONNECTURL }}>
       {children}
     </AppContext.Provider>
   );

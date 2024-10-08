@@ -1,14 +1,15 @@
 import { Platform, StyleSheet, TextInput, ScrollView, Text, View, Pressable, Image, Alert } from 'react-native';
 import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
-import { useAppContext } from '../context/context.js';
+import { AppContext } from '../context/context.js';
 
 
+// const CONNECTURL = "https://yaprikolist.ru"
+const CONNECTURL = Platform.OS === 'ios' ? 'http://localhost:9000' : 'http://10.0.2.2:9000';
+// const CONNECTURL = 'https://4979-2604-6600-1c6-2000-8331-32a5-fd3f-f347.ngrok-free.app'
 
 export default ChatScreen = ( { navigation } ) => { 
-  const { checkInfoApp, CONNECTURL } = useAppContext();
 
-
-  const { user, setUser } = useAppContext();
+  const { user, setUser } = useContext(AppContext);
   const [sendWarn, setsendWarn] = useState("");
   const [sendingMessage, setSendingMessage] = useState(null);
   const [messages, setMessages] = useState([]); // Состояние для хранения сообщений
@@ -16,9 +17,9 @@ export default ChatScreen = ( { navigation } ) => {
   const [isAtBottom, setIsAtBottom] = useState(true);
 
 
-  const globalChatUpdate = async () => {
+  const ListGamesUpdate = async () => {
     try {
-      const response = await fetch(`${CONNECTURL}/getmessagesglobalchat`, {
+      const response = await fetch(`${CONNECTURL}/getlistgames`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -38,77 +39,25 @@ export default ChatScreen = ( { navigation } ) => {
     }
   }
 
-  const sendMessage = async () => {
-    if (sendingMessage === "" || sendingMessage === "." || sendingMessage.length >= 120) {
-      setnameWarn("Такое здесь не одобряют")
 
-    } else {
-      try {
-        const response = await fetch(`${CONNECTURL}/sendmessageglobalchat`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ user, sendingMessage }),
-        });
-  
-    
-        const data = await response.json();
-
-        if (!data.success) {
-          throw new Error(data.message);
-        }
-
-        else {
-          globalChatUpdate()
-          setSendingMessage("")
-          console.log('Сообщение успешно добавлено');
-          console.log('Ответ сервера:', data);
-        }
-    
-      } catch (error) {
-        console.error('Ошибка при отправке данных:', error);
-      }
-    }
-  }
 
 
   useEffect(() => {
-    globalChatUpdate(); // Запрос на обновление сообщений при первом входе
-    const intervalId = setInterval(globalChatUpdate, 2300); // Обновление сообщений каждые 2.3 секунды
+    ListGamesUpdate(); // Запрос на обновление сообщений при первом входе
+    const intervalId = setInterval(ListGamesUpdate, 1500); // Обновление сообщений каждые 2.3 секунды
 
     return () => clearInterval(intervalId); // Очищаем интервал при размонтировании компонента
-  }, []);
-
-  useEffect(() => {
-    if (isAtBottom) {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }
-  }, [messages, isAtBottom]);
-
-  // Функция для проверки, находится ли ScrollView внизу
-  const handleScroll = useCallback((event) => {
-    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-    const isAtBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 40; // 40 - допустимое отклонение для учета некоторых погрешностей
-    setIsAtBottom(isAtBottom);
   }, []);
   
   return (
     <View style={styles.mainWrapper}>
       <View style={styles.topPanel}>
-          <Text style={styles.chatName}>Чат сообщества</Text>
+          <Text style={styles.chatName}>Список Игровых Сессий</Text>
       </View>
       <View style={styles.chatWrapper}>
         <ScrollView
             ref={scrollViewRef}
             onScroll={handleScroll}
-            scrollEventThrottle={16} // Устанавливаем частоту обновления скроллинга
-            onContentSizeChange={() => {
-              // Обновляем состояние, чтобы прокрутка происходила, если находимся внизу
-              if (isAtBottom && scrollViewRef.current) {
-                scrollViewRef.current.scrollToEnd({ animated: true });
-              }
-            }}
           >
           {Array.isArray(messages) && messages.length > 0 ? (
             messages.map((message, index) => (

@@ -1,16 +1,23 @@
-import { Platform, StyleSheet, TextInput, Text, View, Pressable, Image, Alert } from 'react-native';
+import { Platform, StyleSheet, TextInput, Text, View, Pressable, Image, Alert, Linking } from 'react-native';
 import React, { useState, useContext, useEffect, useRef } from 'react';
-import { AppContext } from '../context/context.js';
-
-
-const CONNECTURL = "http://194.87.215.107:9000"
-// const CONNECTURL = Platform.OS === 'ios' ? 'http://localhost:9000' : 'http://10.0.2.2:9000';
-// const CONNECTURL = 'https://4979-2604-6600-1c6-2000-8331-32a5-fd3f-f347.ngrok-free.app'
+import { useAppContext } from '../context/context.js';
 
 
 
 export default BlockVersionScreen = () => { 
-  const { user } = useContext(AppContext)
+  const { user, CONNECTURL } = useAppContext()
+
+
+  const openLink = async () => {
+    const url = 'https://yaprikolist.ru';
+    const supported = await Linking.canOpenURL(url);
+
+    if (supported) {
+      await Linking.openURL(url);
+    } else {
+      Alert.alert(`Не удалось открыть URL: ${url}`);
+    }
+  };
 
   
   return (
@@ -24,8 +31,16 @@ export default BlockVersionScreen = () => {
             style={
             styles.topButton
             }
-            onPress={() => alert("Обновись!!")}
-            ><Text>Продолжить</Text>
+            onPress={openLink}
+            ><Text>Обновить версию</Text>
+        </Pressable>
+
+        <Pressable
+            style={
+            styles.bottomButton
+            }
+            onPress={() => {alert("navigate....")}}
+            ><Text>Продолжить на старой версии</Text>
         </Pressable>
     </View>
   )
