@@ -2,22 +2,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { Platform, ScrollView, StyleSheet, TextInput, Text, View, Pressable, Image, Alert } from 'react-native';
 import React, { useState, useEffect, useRef } from 'react';
-import NetInfo from '@react-native-community/netinfo';
+import ShopPopup from './ShopPopup.js';
 
 import { Audio } from 'expo-av';
 import { useAppContext } from '../context/context.js';
 
 
-const CONNECTURL = "http://194.87.215.107:9000"
-// const CONNECTURL = Platform.OS === 'ios' ? 'http://localhost:9000' : 'http://10.0.2.2:9000';
-// const CONNECTURL = 'https://4979-2604-6600-1c6-2000-8331-32a5-fd3f-f347.ngrok-free.app'
-
-
 export default function HomePage( { navigation } ) {
-  const oldVersion = "0.9.1"
-  const { blockedVersion, setBlockedVersion } = useAppContext();
+  const { checkInfoApp, checkedVersion, checkInternetConnection, CONNECTURL } = useAppContext();
 
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+
+
+  const [showShop, setShowShop] = useState(false);
+
 
   const { user, setUser } = useAppContext();
   const [balance, setBalance] = useState(0);
@@ -33,11 +31,6 @@ export default function HomePage( { navigation } ) {
     balanceRef.current = balance;
   }, [balance]);
 
-
-  const checkInternetConnection = async () => {
-    const state = await NetInfo.fetch();
-    return state.isConnected;
-  };
   
   const saveData = async (key, value) => {
     try {
@@ -187,7 +180,7 @@ useEffect(() => {
   }, [sound]);
 
 
-  const changeSalmon = () => {
+  const changeCurrency = () => {
     alert("Пока что лосоcь один")
   }
 
@@ -199,6 +192,10 @@ useEffect(() => {
   const onPressLearnMore = () => {
     tapUpBalance(countTapList[countTap])
     playSound()
+  }
+
+  const showerShop = () => {
+    setShowShop(!showShop)
   }
 
   const openRating = async () => {
@@ -222,7 +219,7 @@ useEffect(() => {
   const openBattle = async () => {
     const connected = await checkInternetConnection();
     if (connected) {
-      alert("Coming Soon...");
+      navigation.navigate('LobbyPongScreen');
     } else {
       alert("Нет подключения к интернету!");
     }
@@ -278,32 +275,9 @@ useEffect(() => {
     }
   }
 
-
-  const checkInfo = async () => {
-    try {
-      const response = await fetch(`${CONNECTURL}/checkappinfo`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-    
-      const data = await response.json();
-      if (data.info[0].version !== oldVersion) { 
-        
-        setBlockedVersion(true)
-        
-      }
-
-    } catch (error) {
-      console.error('Ошибка при получения сообщений:', error);
-    }
-  }
-
   
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      checkInfo()
       if (isDataLoaded) {
         postYourRating()
       }
@@ -322,8 +296,15 @@ useEffect(() => {
   }, [navigation, balance]);
 
   return (
+    <View>
+    {showShop && <ShopPopup onClose={showerShop}/>}
+    
+
     <ScrollView style={styles.mainWrapper}>
       <View>
+
+        {/* Технический Top блок */}
+
         <View style={styles.userBlock}>
           <View style={styles.userInfo}>
             <Text style={styles.yourSalmonText}>Твой Лосось</Text>
@@ -344,8 +325,8 @@ useEffect(() => {
                 },
                 styles.changeSalmonButton,
               ]}
-              onPress={changeSalmon}
-              ><Text style={styles.changeSalmonText}>Сменить Лосося</Text>
+              onPress={changeCurrency}
+              ><Text style={styles.changeSalmonText}>Сменить Валюту</Text>
             </Pressable>
           </View>
           <View style={styles.settingsMenu}>
@@ -361,27 +342,50 @@ useEffect(() => {
               ><Text style={styles.settingsMenuText}>Меню</Text>
             </Pressable>
           </View>
-
         </View>
+
+        {/* Операционные кнопки */}
 
         <View style={styles.header}>
 
-          <Text style={styles.title}>Прибыль за тап: {countTapList[countTap]}</Text>
-          <Pressable
-            style={({ pressed }) => [
-              {
-                backgroundColor: pressed ? '#d1d1d1' : '#841584', // Меняется цвет при нажатии
-              },
-              styles.upgradeButtonStyle,
-            ]}
-            onPress={upgradeClick}
-            ><Text style={styles.upgradeTextButtonStyle}>Прокачать Тап за {upgradeTapPrices[priceUpgradeTap]} </Text>
-          </Pressable>
+          <View style={styles.profit_tap}>
+            <Pressable
+              style={({ pressed }) => [
+                {
+                  backgroundColor: pressed ? '#d1d1d1' : '#841584', // Меняется цвет при нажатии
+                },
+                styles.upgradeButtonStyle,
+              ]}
+              onPress={upgradeClick}
+              ><Text style={styles.upgradeTextButtonStyle}>Прокачать Тап за {upgradeTapPrices[priceUpgradeTap]} </Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.exchange}>
+            <Pressable
+              style={styles.exchange_button}
+              onPress={upgradeClick}
+              >
+                <Text style={styles.title}>Обменник</Text>
+                <Image
+                source={require('../assets/images/exchange.png')}
+                style={{
+                  width: 30,
+                  height: 30,
+                }}
+                resizeMode="cover"
+              />
+            </Pressable>
+          </View>
+
         </View>
+
       </View>
-          {/*           */}
+
+      {/*    Тар зона       */}
       <View style={styles.container}>
 
+        <Text style={styles.title}>Прибыль за тап: {countTapList[countTap]}</Text>
         <Pressable
           style={({ pressed }) => [
             {
@@ -403,11 +407,30 @@ useEffect(() => {
         <Text style={styles.balanceTitle}>Баланс:</Text>
         <Text style={styles.balanceTitle}>{balance} BBCoin</Text>
 
+
+
+        <Pressable
+            style={styles.shopButton}
+            onPress={showerShop}
+            >
+              <Text style={{
+                fontSize: 23,
+
+              }}>Shop</Text>
+              <Image
+              source={require('../assets/images/shopIcon.png')}
+              style={{
+                width: 30,
+                height: 30,
+              }}
+              resizeMode="cover"
+            />
+        </Pressable>
+
         <View style={{
           flexDirection: "row",
           alignItems: "center",
           gap: 20,
-          marginTop: 70
         }}>
           <Pressable
             style={({ pressed }) => [
@@ -464,6 +487,8 @@ useEffect(() => {
             />
           </Pressable>
         </View>
+
+
         <Pressable
           style={styles.resetButton}
 
@@ -480,6 +505,7 @@ useEffect(() => {
         <StatusBar style="auto" />
       </View>
     </ScrollView>
+    </View>
   )
 }
 
@@ -488,13 +514,13 @@ const styles = StyleSheet.create({
   mainWrapper: {
     marginTop: 49,
     paddingHorizontal: 4,
-    marginBottom: 20, 
   },
   header: {
-    flex: 1,
+    flexDirection: "row",
     backgroundColor: '#fff',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: "space-around",
+    marginTop: 25,
   },
   upgradeButtonStyle: {
     padding: 15,
@@ -504,6 +530,20 @@ const styles = StyleSheet.create({
   upgradeTextButtonStyle: {
     color: 'white',
     fontSize: 15,
+  },
+  exchange: {
+    borderColor: 'black',   // Цвет рамки
+    borderStyle: 'solid', // Тип рамки
+    borderRadius: 8,
+  },
+  exchange_button: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 6, 
+    borderColor: 'black',   // Цвет рамки
+    borderStyle: 'dashed', // Тип рамки
+    borderWidth: 1.5,            // Толщина рамки (добавьте, если рамка не отображается)
+    borderRadius: 8,
   },
   container: {
     backgroundColor: '#fff',
@@ -519,7 +559,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 9,
     borderRadius: 4,
-    marginTop: 40,
   },
   userInfo: {
     width: 104,
@@ -592,7 +631,7 @@ const styles = StyleSheet.create({
   },
   mainButtonStyle: {
     padding: 5,
-    height: 190,
+    height: 172,
     width: '80%',
     alignItems: "center",
     justifyContent: "center",
@@ -605,6 +644,24 @@ const styles = StyleSheet.create({
   },
   // Главные тап кнопки
   // Серверные кнопки
+
+  shopButton: {
+    flexDirection: "row",
+    paddingHorizontal: 68,
+    paddingVertical: 12,
+    backgroundColor: "#ded94be3",
+    alignItems: "center",
+    justifyContent: "space-around",
+    borderRadius: 17,
+    marginTop: 60, 
+    gap: 20,
+    marginBottom: 20,
+
+    borderColor: 'black',   // Цвет рамки
+    borderStyle: 'dotted', // Тип рамки
+    borderWidth: 1.2, // Толщина рамки (добавьте, если рамка не отображается)
+    borderRadius: 8,
+  },
   chatButton: {
     padding: 10,
     backgroundColor: "#c7c7c7d2",

@@ -1,34 +1,16 @@
 import { Platform, StyleSheet, TextInput, Text, View, Pressable, Image, Alert } from 'react-native';
 import React, { useState, useContext, useEffect, useRef } from 'react';
-import { AppContext } from '../context/context.js';
+import { useAppContext } from '../context/context.js';
 import NetInfo from '@react-native-community/netinfo';
 
 
-const CONNECTURL = "http://194.87.215.107:9000"
-// const CONNECTURL = Platform.OS === 'ios' ? 'http://localhost:9000' : 'http://10.0.2.2:9000';
-// const CONNECTURL = 'https://4979-2604-6600-1c6-2000-8331-32a5-fd3f-f347.ngrok-free.app'
-
 
 export default WelcomeScreen = ( { navigation } ) => { 
-
-  const [isConnected, setIsConnected] = useState(false);
-  const isConnectedRef = useRef(isConnected);
-  const [nameWarn, setnameWarn] = useState("хзз")
-  const { user, setUser } = useContext(AppContext);
+  const [nameWarn, setnameWarn] = useState("хэ")
+  const { user, setUser, appVersion, checkInternetConnection, CONNECTURL } = useAppContext();
   const [checkedNewName, setCheckNewName] = useState(null);
   const blackListNames = ["nigger", "Ниггер", "Нигер", "Зеленский", "Макрон", "Niga", "Nigga", "Негр", "Negr", "Райан Гослинг", "Пабло Эксобар", 
     "Байден", "Putin", "Путин", ".", "&", "?", "-", "~", "Зюзьга"]
-
-  useEffect(() => {
-    isConnectedRef.current = isConnected
-  }, [isConnected]);
-
-
-  const checkInternetConnection = () => {
-    NetInfo.fetch().then(state => {
-      setIsConnected(state.isConnected);
-    });
-  };
 
   // Проверка состояния сети при первом рендере компонента и каждые 60 секунд
   useEffect(() => {
@@ -41,31 +23,34 @@ export default WelcomeScreen = ( { navigation } ) => {
   }, []);
 
   const createYourRating = async () => {
-    try {
-      const response = await fetch(`${CONNECTURL}/createyourrating`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ checkedNewName, balance: 0 }), // Укажите balance как свойство объекта
-      });
+    const connected = await checkInternetConnection();
+    if (connected) { 
+      try {
+        const response = await fetch(`${CONNECTURL}/createyourrating`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ checkedNewName, balance: 0 }), // Укажите balance как свойство объекта
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!data.success) {
-        throw new Error(data.message);
-      } else {
-        console.log('Личный рейтинг создан');
+        if (!data.success) {
+          throw new Error(data.message);
+        } else {
+          console.log('Личный рейтинг создан');
+        }
+      } catch (error) {
+        console.error('Ошибка при отправке данных:', error);
       }
-    } catch (error) {
-      console.error('Ошибка при отправке данных:', error);
     }
   };
   
   
   const saveUserName = async () => {
-      checkInternetConnection()
-      if (isConnectedRef.current) {
+    const connected = await checkInternetConnection();
+      if (connected) {
         if (checkedNewName.length <= 4 || checkedNewName === "") {
           setnameWarn("Слишком короткий! (от 4-х)")
         } else if (checkedNewName.length > 16) {
@@ -98,7 +83,6 @@ export default WelcomeScreen = ( { navigation } ) => {
               console.log('Ответ сервера:', data);
         
               setUser(checkedNewName); // Записываем валидное введенное имя в состояние
-              navigation.navigate('HomePage')
             }
         
           } catch (error) {
@@ -131,6 +115,8 @@ export default WelcomeScreen = ( { navigation } ) => {
             onPress={saveUserName}
             ><Text>Продолжить</Text>
         </Pressable>
+
+        <Text style={styles.version}>v.{appVersion}</Text>
     </View>
   )
   };
@@ -147,5 +133,10 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: "#c7c7c7d2",
     borderRadius: 30,
+  },
+  version: {
+    margin: 100,
+    fontSize: 14,
+    color: "#e307b3"
   }
 })

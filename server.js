@@ -1,20 +1,24 @@
 const express = require('express');
 const mysql = require('mysql');
 
+const http = require('http'); // Для создания HTTP-сервера
+const { Server } = require('socket.io'); // Импортируем socket.io
+
 const app = express();
 const port = 9000;
 
+
 const pool = mysql.createPool({
-  connectionLimit: 100, // Устанавливаем лимит соединений
-  host: '194.87.215.107',
-  user: 'root',
-  password: '7G$11te2iOH8^q&!qU71E2T82lO0$%sc6Xizk!I82',  
-  database: 'SalmonGame'
-  // connectionLimit: 100, // Устанавливаем лимит соединений ;
-  // host: 'localhost',
+  // connectionLimit: 100, // Устанавливаем лимит соединений
+  // host: '31.129.35.98',
   // user: 'root',
-  // password: '',
+  // password: '',  
   // database: 'SalmonGame'
+  connectionLimit: 100, // Устанавливаем лимит соединений ;
+  host: 'localhost',
+  user: 'root',
+  password: '',
+  database: 'SalmonGame'
 });
 
 
@@ -215,6 +219,68 @@ app.post('/sendmessageglobalchat', (req, res) => {
     });
   });
 });
+
+
+
+
+
+app.post('/createponggame', (req, res) => {
+  const { gameName, user, bet } = req.body;
+
+  const getCurrentTimeFormatted = () => new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const currentTime = getCurrentTimeFormatted(); // Например: 2024-09-17 14:35:22
+
+
+  // Получаем текущее количество сообщений пользователя, чтобы создать уникальный UMI
+  const gamesquery = 'SELECT COUNT(*) as games FROM poolPongGame WHERE game_id';
+
+  pool.query(gamesquery, (error, results) => {
+    if (error) {
+      console.error('Ошибка при выполнении запроса на получение id игр:', error);
+      res.status(500).json({ success: false, message: 'Ошибка при получении id игр' });
+      return;
+    }
+
+    // Получаем UMI (messageCount + 1)
+    const game_id = results[0].games + 1;
+
+    // Вставляем новое сообщение в базу данных с UMI
+    const insertQuery = 'INSERT INTO poolPongGame (game_id, gamename, player1, bet, time) VALUES (?, ?, ?, ?, ?)';
+    
+    pool.query(insertQuery, [game_id, gameName, user, bet, currentTime], (error, results) => {
+      if (error) {
+        console.error('Ошибка при выполнении запроса на отправку сообщения:', error);
+        res.status(500).json({ success: false, message: 'Ошибка при отправке сообщения' });
+        return;
+      }
+
+      res.status(200).json({ success: true, message: 'Игра создана с id:', game_id });
+    });
+  });
+});
+
+
+
+
+app.get('/getlistgames', (req, res) => {
+  // Запрос для получения всех сообщений, сортированных по времени
+  const query = 'SELECT * FROM poolPongGame ORDER BY time ASC;';
+  
+  pool.query(query, (error, results) => {
+    if (error) {
+      console.error('Ошибка при выполнении запроса на получение сообщений:', error);
+      res.status(500).json({ success: false, message: 'Ошибка при получении сообщений' });
+      return;
+    }
+
+    // Возвращаем список сообщений
+    res.status(200).json({ success: true, messages: results });
+  });
+});
+
+
+
+
 
 
 app.get('/checkappinfo', (req, res) => {

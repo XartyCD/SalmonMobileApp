@@ -9,14 +9,13 @@ import RatingScreen from './screens/RatingScreen.js';
 import HomePage from './screens/HomePage.js';
 import ChatScreen from './screens/ChatScreen.js';
 
+import LobbyPongScreen from './screens/PongGameScreens/LobbyPongScreen.js';
+import GamePongScreen from './screens/PongGameScreens/GamePongScreen.js';
+
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import 'react-native-gesture-handler';
 
-
-const CONNECTURL = "http://194.87.215.107:9000"
-// const CONNECTURL = Platform.OS === 'ios' ? 'http://localhost:9000' : 'http://10.0.2.2:9000';
-// const CONNECTURL = 'https://4979-2604-6600-1c6-2000-8331-32a5-fd3f-f347.ngrok-free.app'
 
 
 const Stack = createStackNavigator();
@@ -33,8 +32,9 @@ export default function App() {
 }
 
 function AppContent() {
-  const { user, blockedVersion } = useAppContext(); // используем контекст внутри компонента AppContent
+  const { user, blockedVersion, checkInfoApp } = useAppContext(); // используем контекст внутри компонента AppContent
   console.log(blockedVersion)
+  checkInfoApp()
   return (
     <Stack.Navigator screenOptions={{
       headerShown: false, 
@@ -55,6 +55,8 @@ function AppContent() {
           <Stack.Screen name="HomePage" component={HomePage} />
           <Stack.Screen name="RatingScreen" component={RatingScreen} />
           <Stack.Screen name="ChatScreen" component={ChatScreen} />
+          <Stack.Screen name="LobbyPongScreen" component={LobbyPongScreen} />
+          <Stack.Screen name="GamePongScreen" component={GamePongScreen} />
         </>
       )}
     </Stack.Navigator>

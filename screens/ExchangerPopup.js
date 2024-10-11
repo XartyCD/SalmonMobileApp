@@ -3,8 +3,7 @@ import React, { useState, useContext, useEffect, useRef } from 'react';
 import { useAppContext } from '../context/context.js';
 
 
-
-export default BlockVersionScreen = () => { 
+export default ExchangerPopup = ({ onClose }) => { 
   const { user, CONNECTURL } = useAppContext()
 
 
@@ -21,26 +20,19 @@ export default BlockVersionScreen = () => {
 
   
   return (
-    <View style={{
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center"
-        }}>
-        <Text>{user}, ваша версия приложения устарела, обновитесь</Text>
+    <View style={styles.popup_wrapper}>
+      
+        <Text>{user}, Твой макасын</Text>
         <Pressable
-            style={
-            styles.topButton
-            }
-            onPress={openLink}
-            ><Text>Обновить версию</Text>
-        </Pressable>
-
-        <Pressable
-            style={
-            styles.bottomButton
-            }
-            onPress={() => {alert("navigate....")}}
-            ><Text>Продолжить на старой версии</Text>
+            onPress={onClose}
+            ><Image
+            source={require('../assets/images/closeIcon.png')}
+            style={{
+              width: 50,
+              height: 50,
+            }}
+            resizeMode="cover"
+          />
         </Pressable>
     </View>
   )
@@ -48,15 +40,18 @@ export default BlockVersionScreen = () => {
 
 
 const styles = StyleSheet.create({
-  warnSetNickname: {
-    padding: 4,
-    backgroundColor: "#ff4f4fdb",
-    color: "white",
-    fontSize: 16,
+  popup_wrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0, // растянуть на всю ширину
+    zIndex: 1, // компонент поверх других
+    width: "100%",
+    height: "88%",
+    backgroundColor: "#9f89f5b3"
   }, 
   topButton: {
     padding: 10,
     backgroundColor: "#c7c7c7d2",
     borderRadius: 30,
-  }
-})
+  }})
