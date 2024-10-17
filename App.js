@@ -10,6 +10,7 @@ import HomePage from './screens/HomePage.js';
 import ChatScreen from './screens/ChatScreen.js';
 
 import LobbyPongScreen from './screens/PongGameScreens/LobbyPongScreen.js';
+import PongCreatePopup from './screens/PongGameScreens/PongCreatePopup.js';
 import GamePongScreen from './screens/PongGameScreens/GamePongScreen.js';
 
 import { NavigationContainer } from '@react-navigation/native';
@@ -56,6 +57,7 @@ function AppContent() {
           <Stack.Screen name="RatingScreen" component={RatingScreen} />
           <Stack.Screen name="ChatScreen" component={ChatScreen} />
           <Stack.Screen name="LobbyPongScreen" component={LobbyPongScreen} />
+          <Stack.Screen name="PongCreatePopup" component={PongCreatePopup} />
           <Stack.Screen name="GamePongScreen" component={GamePongScreen} />
         </>
       )}

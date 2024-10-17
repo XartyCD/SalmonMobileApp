@@ -1,18 +1,28 @@
 const express = require('express');
 const mysql = require('mysql');
 
-const http = require('http'); // Для создания HTTP-сервера
-const { Server } = require('socket.io'); // Импортируем socket.io
+const http = require('http');
+const socketIo = require('socket.io');
 
 const app = express();
 const port = 9000;
+const socketPort = 9003
+
+const server = http.createServer(app);
+
+// Настраиваем Socket.IO
+const io = socketIo(server, {
+    cors: {
+        origin: '*', // Обеспечиваем доступ с любых источников, важно для работы с клиентом
+    }
+});
 
 
 const pool = mysql.createPool({
   // connectionLimit: 100, // Устанавливаем лимит соединений
   // host: '31.129.35.98',
   // user: 'root',
-  // password: '',  
+  // password: 'x@Wg^n$&s72r$T1yTh*17a2^q1i7*1vi^a*tl6^&te=1o#71a8',  
   // database: 'SalmonGame'
   connectionLimit: 100, // Устанавливаем лимит соединений ;
   host: 'localhost',
@@ -20,6 +30,13 @@ const pool = mysql.createPool({
   password: '',
   database: 'SalmonGame'
 });
+
+
+// app.use(express.static(path.join(__dirname, 'public')));
+
+// app.get('*', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// });
 
 
 
@@ -223,7 +240,6 @@ app.post('/sendmessageglobalchat', (req, res) => {
 
 
 
-
 app.post('/createponggame', (req, res) => {
   const { gameName, user, bet } = req.body;
 
@@ -261,20 +277,80 @@ app.post('/createponggame', (req, res) => {
 
 
 
+let games = {};
 
+io.on('connection', (socket) => {
+  console.log('A user connected');
+
+  // Создание новой игры
+  socket.on('createGame', (playerName) => {
+    console.log(playerName)
+    
+    const gameId = Math.random().toString(36).substring(2, 9);
+    games[gameId] = { players: {} };
+    games[gameId].players[socket.id] = { playerName, position: { x: 0, y: 0 } };
+    socket.join(gameId);
+    socket.emit('waitingForPlayer', gameId);
+  });
+
+  // Присоединение ко второй игре
+  socket.on('joingame', ({ game_id, playerName }) => {
+
+    if (game && !game.player2) {
+        game.player2 = playerName;
+        console.log(`${playerName} присоединился к игре ${game_id}`);
+        
+        io.to(game_id).emit('startGame', game); // Отправляем данные об игре
+        socket.join(game_id); // Добавляем игрока в комнату
+    } else {
+        socket.emit('error', 'Невозможно присоединиться к игре. Либо игра не найдена, либо уже заполнена.');
+    }
+  });
+
+  // Перемещение игрока
+  socket.on('playerMove', ({ gameId, position }) => {
+    if (games[gameId] && games[gameId].players[socket.id]) {
+      games[gameId].players[socket.id].position = position;
+      io.to(gameId).emit('updateGame', games[gameId].players);
+    }
+  });
+
+  // Перемещение мяча
+  socket.on('ballMove', ({ gameId, x, y }) => {
+    io.to(gameId).emit('updateBall', { x, y });
+  });
+
+  // Обработка отключения игрока
+  socket.on('disconnect', () => {
+    console.log('A user disconnected');
+    for (const gameId in games) {
+      if (games[gameId].players[socket.id]) {
+        delete games[gameId].players[socket.id];
+        if (Object.keys(games[gameId].players).length === 0) {
+          delete games[gameId];
+        }
+      }
+    }
+  });
+});
+
+
+
+
+
+
+// Маршрут для получения списка игр
 app.get('/getlistgames', (req, res) => {
-  // Запрос для получения всех сообщений, сортированных по времени
   const query = 'SELECT * FROM poolPongGame ORDER BY time ASC;';
   
   pool.query(query, (error, results) => {
     if (error) {
-      console.error('Ошибка при выполнении запроса на получение сообщений:', error);
-      res.status(500).json({ success: false, message: 'Ошибка при получении сообщений' });
+      console.error('Ошибка при получении игр:', error);
+      res.status(500).json({ success: false, message: 'Ошибка при получении игр' });
       return;
     }
 
-    // Возвращаем список сообщений
-    res.status(200).json({ success: true, messages: results });
+    res.status(200).json({ success: true, ponggames: results });
   });
 });
 
@@ -301,8 +377,11 @@ app.get('/checkappinfo', (req, res) => {
 
 
 
-
-
 app.listen(port, '0.0.0.0', () => {
   console.log(`Сервер успешно запущен на порту ${port}`);
+});
+
+
+server.listen(socketPort, '0.0.0.0', () => {
+  console.log(`Сокеты запущены на порту ${socketPort}`);
 });

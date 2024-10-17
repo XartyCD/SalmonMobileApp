@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
-import { Platform, ScrollView, StyleSheet, TextInput, Text, View, Pressable, Image, Alert } from 'react-native';
+import { Platform, ScrollView, StyleSheet, TextInput, Text, View, Pressable, Image, Alert, Animated } from 'react-native';
 import React, { useState, useEffect, useRef } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
 import ShopPopup from './ShopPopup.js';
 
 import { Audio } from 'expo-av';
@@ -304,7 +305,6 @@ useEffect(() => {
       <View>
 
         {/* Технический Top блок */}
-
         <View style={styles.userBlock}>
           <View style={styles.userInfo}>
             <Text style={styles.yourSalmonText}>Твой Лосось</Text>
@@ -317,31 +317,30 @@ useEffect(() => {
           </View>
 
           <View style={styles.changeSalmon}>
-            <Pressable
-              style={({ pressed }) => [
-                {
-                  backgroundColor: pressed ? '#d1d1d1' : '#841584', // Меняем цвет при нажатии
-                  transform: [{ scale: pressed ? 0.94 : 1 }] // Немного уменьшаем кнопку при нажатии
-                },
-                styles.changeSalmonButton,
-              ]}
-              onPress={changeCurrency}
-              ><Text style={styles.changeSalmonText}>Сменить Валюту</Text>
-            </Pressable>
+            <LinearGradient
+              colors={['rgb(1, 110, 218)', 'rgb(217, 0, 192)']}  // Градиентные цвета
+              start={[0, 0]} 
+              end={[1, 1]}
+              style={styles.btnGradientBorder}
+            >
+              <Pressable
+                style={({ pressed }) => [
+                  styles.btn,
+                  pressed && styles.btnPressed,  // Эффект при нажатии
+                ]}
+                onPress={() => console.log('Button Pressed')}
+              >
+                <Text style={styles.btnText}>Сменить валюту</Text>
+              </Pressable>
+            </LinearGradient>
           </View>
           <View style={styles.settingsMenu}>
             <Pressable
-              style={({ pressed }) => [
-                {
-                  backgroundColor: pressed ? '#d1d1d1' : '#841584', // Меняем цвет при нажатии
-                  transform: [{ scale: pressed ? 0.94 : 1 }] // Немного уменьшаем кнопку при нажатии
-                },
-                styles.settingsMenuButton,
-              ]}
+              style={styles.settingsMenuButton}
               onPress={settingsMenu}
               ><Text style={styles.settingsMenuText}>Меню</Text>
             </Pressable>
-          </View>
+            </View>
         </View>
 
         {/* Операционные кнопки */}
@@ -550,6 +549,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 100,
   },
+
   userBlock: {
     backgroundColor: "#b0b0b0db",
     color: "white",
@@ -557,14 +557,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 9,
-    paddingVertical: 9,
+    paddingVertical: 6,
     borderRadius: 4,
+    width: "100%"
   },
   userInfo: {
     width: 104,
     maxWidth: 104,
     height: "auto",
-    maxHeight: 67,
+    maxHeight: 50,
   },
 
   yourSalmonText: {
@@ -596,29 +597,48 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
 
+
+
   changeSalmon: {
-    width: 104,
+    width: 111,
     padding: 5,
   },
 
-  changeSalmonButton: {
-    borderRadius: 40
+  btnGradientBorder: {
+    padding: 2.2,  // Отступ для градиентной рамки
+    borderRadius: 10,  // Радиус для закругления углов рамки
+  },
+  btn: {
+    backgroundColor: '#141414dd',  // Черный фон кнопки
+    paddingVertical: 5,
+    paddingHorizontal: 0,
+    borderRadius: 8,  // Радиус для закругления углов самой кнопки
+  },
+  btnText: {
+    fontSize: 15,
+    color: '#fff',  // Белый цвет текста
+    textAlign: 'center',
+  },
+  btnPressed: {
+    backgroundColor: '#333',  // Темнее при нажатии
   },
 
-  changeSalmonText: {
-    textAlign: "center"
-  },
 
   settingsMenu: {
-    width: 104
+    width: 104,
+    alignItems: "flex-end"
   },
 
   settingsMenuButton: {
-    borderRadius: 40,
+    borderRadius: 3,
+    width: 80,
+    backgroundColor: "#030303",
+    paddingVertical: 7
   },
 
   settingsMenuText: {
-    textAlign: "center"
+    textAlign: "center",
+    color: "white"
   },
 
   title: {
@@ -685,7 +705,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#db710ddb",
     color: "black",
     fontSize: 20,
-    marginTop: 200
+    marginTop: 200,
+    marginBottom: 30,
   },
 
 });

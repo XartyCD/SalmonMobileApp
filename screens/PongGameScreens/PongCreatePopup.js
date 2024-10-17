@@ -2,11 +2,19 @@ import { Platform, StyleSheet, TextInput, Text, View, Pressable, Image, Alert, L
 import React, { useState, useContext, useEffect, useRef } from 'react';
 import { useAppContext } from '../../context/context.js';
 
+import io from 'socket.io-client';
 
-export default PongCreatePopup = ({ onClose }) => { 
+const socket = Platform.OS === 'ios' ? io('http://localhost:9003') : io('http://10.0.2.2:9003')
+
+
+export default PongCreatePopup = ({ navigation, onClose }) => { 
   const { user, CONNECTURL, checkInternetConnection } = useAppContext()
+  
+  socket.on('new', () => {
+    console.log('Подключение установлено', socket.id);
+  });
 
-  const [gameName, setgameName] = useState("")
+  const [gameName, setgameName] = useState(`Игра игрока ${user}`)
   const [bet, setBet] = useState(0)
 
   const blackListNames = ["nigger", "Ниггер", "Нигер", "Зеленский", "Макрон", "Niga", "Nigga", "Негр", "Negr", "Райан Гослинг", "Пабло Эксобар", 
@@ -26,7 +34,7 @@ export default PongCreatePopup = ({ onClose }) => {
           gameName.toLowerCase().includes(word.toLowerCase()))) {
           // setnameWarn("Название неприемлимо")
           alert(3)
-        } else if (isNaN(bet) || bet <= 0) {
+        } else if (isNaN(bet) || bet <= 0) { // Сделать норм ввод цифры
           alert(4)
         } else {
           try {
@@ -49,8 +57,11 @@ export default PongCreatePopup = ({ onClose }) => {
               }
 
               else {
-              // createYourRating()
-              console.log('Ответ сервера:', data);
+                socket.emit('createGame', user);
+                alert("успех")
+
+                navigation.navigate('GamePongScreen', { game_id: data.game_id, playerName: user});
+                console.log('Ответ сервера:', data);
 
               }
           } catch (error) {
