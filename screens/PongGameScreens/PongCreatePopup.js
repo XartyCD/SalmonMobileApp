@@ -2,11 +2,13 @@ import { Platform, StyleSheet, TextInput, Text, View, Pressable, Image, Alert, L
 import React, { useState, useContext, useEffect, useRef } from 'react';
 import { useAppContext } from '../../context/context.js';
 
+import io from 'socket.io-client';
 
-export default PongCreatePopup = ({ onClose }) => { 
-  const { user, CONNECTURL, checkInternetConnection } = useAppContext()
+export default PongCreatePopup = ({ navigation, onClose }) => { 
 
-  const [gameName, setgameName] = useState("")
+  const { user, createSocket, CONNECTURL, checkInternetConnection } = useAppContext()
+
+  const [gameName, setgameName] = useState(`Игра игрока ${user}`)
   const [bet, setBet] = useState(0)
 
   const blackListNames = ["nigger", "Ниггер", "Нигер", "Зеленский", "Макрон", "Niga", "Nigga", "Негр", "Negr", "Райан Гослинг", "Пабло Эксобар", 
@@ -26,33 +28,25 @@ export default PongCreatePopup = ({ onClose }) => {
           gameName.toLowerCase().includes(word.toLowerCase()))) {
           // setnameWarn("Название неприемлимо")
           alert(3)
-        } else if (isNaN(bet) || bet <= 0) {
+        } else if (isNaN(bet) || bet <= 0) { // Сделать норм ввод цифры
           alert(4)
         } else {
           try {
-            const response = await fetch(`${CONNECTURL}/createponggame`, {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-              },
-                body: JSON.stringify({ gameName, user, bet }),
-              });
-      
-              const data = await response.json();
+            const socket = createSocket()
+            socket.emit('createGame', gameName, user, bet);
 
-              if (!data.success) {
-                throw new Error(data.message);
+            socket.on('createGameSuccess', (data) => {
+              if (data.success) {
+                console.log(`Игра успешно создана с id: ${data.game_id}`);  // number
+                
+                // Навигация на экран игры с game_id
+                navigation.navigate('GamePongScreen', { game_id: data.game_id, playerName: user });
+                alert("Игра успешно создана!");
+                
+              } else {
+                console.error('Ошибка создания игры:', data.message);
               }
-
-              if (data.success === "already namegame") {
-                alert('Название занято');
-              }
-
-              else {
-              // createYourRating()
-              console.log('Ответ сервера:', data);
-
-              }
+            });
           } catch (error) {
             console.error('Ошибка при отправке данных:', error);
           }

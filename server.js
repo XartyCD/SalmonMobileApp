@@ -1,25 +1,38 @@
 const express = require('express');
 const mysql = require('mysql');
 
-const http = require('http'); // Для создания HTTP-сервера
-const { Server } = require('socket.io'); // Импортируем socket.io
+const http = require('http');
+const socketIo = require('socket.io');
 
 const app = express();
 const port = 9000;
+const socketPort = 9003
+
+const server = http.createServer(app);
+
+// Настраиваем Socket.IO
+const io = socketIo(server, {
+    cors: {
+        origin: '*', // Обеспечиваем доступ с любых источников, важно для работы с клиентом
+    }
+});
 
 
 const pool = mysql.createPool({
-  // connectionLimit: 100, // Устанавливаем лимит соединений
-  // host: '31.129.35.98',
-  // user: 'root',
-  // password: '',  
-  // database: 'SalmonGame'
+
   connectionLimit: 100, // Устанавливаем лимит соединений ;
   host: 'localhost',
   user: 'root',
   password: '',
   database: 'SalmonGame'
 });
+
+
+// app.use(express.static(path.join(__dirname, 'public')));
+
+// app.get('*', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// });
 
 
 
@@ -223,58 +236,142 @@ app.post('/sendmessageglobalchat', (req, res) => {
 
 
 
+let games = {};
 
-app.post('/createponggame', (req, res) => {
-  const { gameName, user, bet } = req.body;
+io.on('connection', (socket) => {
+  console.log('A user connected');
 
-  const getCurrentTimeFormatted = () => new Date().toISOString().replace('T', ' ').slice(0, 19);
-  const currentTime = getCurrentTimeFormatted(); // Например: 2024-09-17 14:35:22
+  // Создание новой игры
+  socket.on('createGame', (gameName, playerName, bet) => {
+    console.log(gameName, playerName, bet)
 
+    const getCurrentTimeFormatted = () => new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const currentTime = getCurrentTimeFormatted(); // Например: 2024-09-17 14:35:22
 
-  // Получаем текущее количество сообщений пользователя, чтобы создать уникальный UMI
-  const gamesquery = 'SELECT COUNT(*) as games FROM poolPongGame WHERE game_id';
+    const gamesquery = 'SELECT COUNT(*) as games FROM poolPongGame WHERE game_id';
 
-  pool.query(gamesquery, (error, results) => {
-    if (error) {
-      console.error('Ошибка при выполнении запроса на получение id игр:', error);
-      res.status(500).json({ success: false, message: 'Ошибка при получении id игр' });
-      return;
-    }
-
-    // Получаем UMI (messageCount + 1)
-    const game_id = results[0].games + 1;
-
-    // Вставляем новое сообщение в базу данных с UMI
-    const insertQuery = 'INSERT INTO poolPongGame (game_id, gamename, player1, bet, time) VALUES (?, ?, ?, ?, ?)';
-    
-    pool.query(insertQuery, [game_id, gameName, user, bet, currentTime], (error, results) => {
+    pool.query(gamesquery, (error, results) => {
       if (error) {
-        console.error('Ошибка при выполнении запроса на отправку сообщения:', error);
-        res.status(500).json({ success: false, message: 'Ошибка при отправке сообщения' });
+        console.error('Ошибка при выполнении запроса на получение id игр:', error);
+        res.status(500).json({ success: false, message: 'Ошибка при получении id игр' });
         return;
       }
 
-      res.status(200).json({ success: true, message: 'Игра создана с id:', game_id });
-    });
+      // Получаем UMI (messageCount + 1)
+      const game_id = results[0].games + 1;
+
+      // Вставляем новую игру в базу данных с game_id
+      const insertQuery = 'INSERT INTO poolPongGame (game_id, gamename, player1, bet, time) VALUES (?, ?, ?, ?, ?)';
+      
+      pool.query(insertQuery, [game_id, gameName, playerName, bet, currentTime], (error, res) => {
+        if (error) {
+          console.error('Ошибка при выполнении запроса на отправку сообщения:', error);
+          res.status(500).json({ success: false, message: 'Ошибка при отправке сообщения' });
+          return;
+        }
+
+        socket.emit('createGameSuccess', { success: true, game_id, message: 'Игра успешно создана' });  // number
+      })
+
+
+      games[game_id] = { 
+        gameName: gameName,
+        bet: bet,
+        currentTime: currentTime,
+        players: {} 
+      };
+
+      games[game_id].players[socket.id] = { playerName, position: { x: 0, y: 0 } }
+
+      socket.join(game_id); // !!!!!
+      console.log(game_id, "a")
+
+
+      const room = io.sockets.adapter.rooms.get(game_id);
+
+      if (room) {
+          const clients = Array.from(room); // Преобразуем Set в массив
+          console.log('Пользователи в комнате:', clients);
+      } else {
+          console.log('Комната не найдена.');
+      }
+    })
+  });
+
+  // Присоединение ко второй игре
+  socket.on('joingame', ({ game_id, playerName }) => {
+
+    if (games[game_id] && Object.keys(games[game_id].players).length === 1) {
+
+      games[game_id].players[socket.id] = { 
+        playerName, position: { x: 0, y: 0 } }
+        
+        socket.emit("startGame", game_id)
+        console.log(`${playerName} присоединился к игре ${game_id}`);
+        socket.join(game_id); // Добавляем игрока в комнату
+        
+        console.log(typeof game_id)
+
+        const room = io.sockets.adapter.rooms.get(game_id);
+
+        if (room) {
+            const clients = Array.from(room); // Преобразуем Set в массив
+            console.log('Пользователи in комнате:', clients);
+        } else {
+            console.log('Комната не найдена.');
+        }
+
+        io.to(game_id).emit('go'); // Отправляем данные об игре
+        console.log(games)
+    } else {
+        socket.emit('error', 'Невозможно присоединиться к игре. Либо игра не найдена, либо уже заполнена.');
+    }
+  });
+
+  // Перемещение игрока
+  socket.on('playerMove', ({ game_id, position }) => {
+    if (games[game_id] && games[game_id].players[socket.id]) {
+      games[game_id].players[socket.id].position = position;
+      io.to(game_id).emit('updateGame', games[game_id].players);
+    }
+  });
+
+  // Перемещение мяча
+  socket.on('ballMove', ({ game_id, x, y }) => {
+    io.to(game_id).emit('updateBall', { x, y }); // Обновляем позицию мяча для всех игроков
+  });
+  
+  // Обработка отключения игрока
+  socket.on('disconnect', () => {
+    console.log('A user disconnected');
+    for (const game_id in games) {
+      if (games[game_id].players[socket.id]) {
+        delete games[game_id].players[socket.id];
+        if (Object.keys(games[game_id].players).length === 0) {
+          delete games[game_id];
+        }
+      }
+    }
   });
 });
 
 
 
 
+
+
+// Маршрут для получения списка игр
 app.get('/getlistgames', (req, res) => {
-  // Запрос для получения всех сообщений, сортированных по времени
   const query = 'SELECT * FROM poolPongGame ORDER BY time ASC;';
   
   pool.query(query, (error, results) => {
     if (error) {
-      console.error('Ошибка при выполнении запроса на получение сообщений:', error);
-      res.status(500).json({ success: false, message: 'Ошибка при получении сообщений' });
+      console.error('Ошибка при получении игр:', error);
+      res.status(500).json({ success: false, message: 'Ошибка при получении игр' });
       return;
     }
 
-    // Возвращаем список сообщений
-    res.status(200).json({ success: true, messages: results });
+    res.status(200).json({ success: true, ponggames: results });
   });
 });
 
@@ -301,8 +398,11 @@ app.get('/checkappinfo', (req, res) => {
 
 
 
-
-
 app.listen(port, '0.0.0.0', () => {
   console.log(`Сервер успешно запущен на порту ${port}`);
+});
+
+
+server.listen(socketPort, '0.0.0.0', () => {
+  console.log(`Сокеты запущены на порту ${socketPort}`);
 });

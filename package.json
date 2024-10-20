@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "dev": "nodemon server.js"
   },
   "dependencies": {
     "@expo-google-fonts/concert-one": "^0.2.3",
@@ -24,12 +25,14 @@
     "expo": "^51.0.37",
     "expo-av": "~14.0.7",
     "expo-font": "^12.0.10",
+    "expo-linear-gradient": "^13.0.2",
     "expo-modules-core": "~1.12.25",
     "expo-splash-screen": "~0.27.6",
     "expo-status-bar": "~1.12.1",
-    "express": "^4.21.0",
+    "express": "^4.21.1",
     "graphql-tag": "^2.12.6",
     "mysql": "^2.18.1",
+    "nodemon": "^3.1.7",
     "react": "18.2.0",
     "react-native": "0.74.5",
     "react-native-fast-image": "^8.6.3",

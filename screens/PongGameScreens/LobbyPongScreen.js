@@ -1,22 +1,21 @@
 import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, ScrollView, Text, View, Pressable, Image, Alert } from 'react-native';
 import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
-import { AppContext } from '../../context/context.js';
+import { useAppContext } from '../../context/context.js';
 
 import ShopPopup from './PongCreatePopup.js';
 
+import io from 'socket.io-client';
 
 
-// const CONNECTURL = "https://yaprikolist.ru"
-const CONNECTURL = Platform.OS === 'ios' ? 'http://localhost:9000' : 'http://10.0.2.2:9000';
-// const CONNECTURL = 'https://4979-2604-6600-1c6-2000-8331-32a5-fd3f-f347.ngrok-free.app'
-
-export default LobbyPongScreen = ( { navigation } ) => { 
-  const { user, setUser } = useContext(AppContext);
+export default LobbyPongScreen = ( { navigation }) => { 
+  const { createSocket, user, CONNECTURL } = useAppContext();
 
   const [showCreate, setShowCreate] = useState(false);
   const [createIcon, setCreateIcon] = useState(require('../../assets/images/createPongGameIcon.png'));
 
   const [ponggames, setPonggames] = useState([]); // Состояние для хранения игр
+
+
 
   const ListGamesUpdate = async () => {
     try {
@@ -30,6 +29,7 @@ export default LobbyPongScreen = ( { navigation } ) => {
       const data = await response.json();
 
       if (data.ponggames !== ponggames) { 
+        console.log(data.ponggames)
         setPonggames(data.ponggames);
         
       }
@@ -38,6 +38,24 @@ export default LobbyPongScreen = ( { navigation } ) => {
       console.error('Ошибка при получения сообщений:', error);
     }
   }
+
+  const joinPongGame = (game_id, playerName) => {
+    const socket = createSocket()
+    socket.emit('joingame', { game_id, playerName });  // Отправляем данные на сервер
+    console.log(typeof game_id)
+  
+    // Ожидаем ответа от сервера
+    socket.on('startGame', game_id => {
+      alert('Игра началась!')
+
+      navigation.navigate('GamePongScreen', { game_id, playerName, playerNumber: 2 });
+    });
+  
+    socket.on('error', (errorMessage) => {
+      console.error('Ошибка:', errorMessage);
+      Alert.alert('Ошибка', errorMessage);
+    });
+  };
 
 
   const showerCreate = () => {
@@ -94,7 +112,7 @@ export default LobbyPongScreen = ( { navigation } ) => {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 70}
     >
     <View style={styles.mainWrapper}>
-      {showCreate && <PongCreatePopup onClose={showerCreate}/>}
+      {showCreate && <PongCreatePopup onClose={showerCreate} navigation={navigation}/>}
 
       <View style={styles.topPanel}>
           <Text style={styles.chatName}>Список Игровых Сессий</Text>
@@ -102,9 +120,10 @@ export default LobbyPongScreen = ( { navigation } ) => {
       <View style={styles.chatWrapper}>
         <ScrollView>
         <Pressable
-            style={
-            styles.sendButton
-            }
+            style={{
+              width: 50,
+              height: 50,
+            }}
             onPress={showerCreate}
             >
             <Image
@@ -118,10 +137,17 @@ export default LobbyPongScreen = ( { navigation } ) => {
         </Pressable>
           {Array.isArray(ponggames) && ponggames.length > 0 ? (
             ponggames.map((game, index) => (
-              <View key={index} style={styles.pongBlock}>
-                <Text style={styles.pongUser}>{game.user}</Text> 
-                <Text style={styles.messageText}>{game.difficult}</Text>
-                <Text style={styles.messageText}>{game.bet}</Text>
+              <View key={index} style={styles.gameSessionBlock}>
+                <Text style={styles.gamename}>{game.gamename}</Text> 
+                <Text style={styles.gamecreator}>{game.player1}</Text>
+                <Text style={styles.gamebet}>{game.bet}</Text>
+
+                <Pressable
+                  style={styles.gameButton}
+                  onPress={() => joinPongGame(Number(game.game_id), user)}
+                >
+                  <Text style={styles.buttonText}>Присоединиться</Text>
+                </Pressable>
               </View>
             ))
           ) : (
@@ -157,8 +183,9 @@ const styles = StyleSheet.create({
     width: "100%",
   },
 
-  messageBlock: {
-    backgroundColor: '#e0e0e0',
+  
+  gameSessionBlock: {
+    backgroundColor: '#8dd4d9e4',
     paddingTop: 8,
     paddingBottom: 15,
     paddingHorizontal: 10,
@@ -166,24 +193,20 @@ const styles = StyleSheet.create({
     marginTop: 11,
     marginBottom: 7,
     marginHorizontal: 12,
-    width: "auto",
-    maxWidth: 450,
-    height: "auto",
-
   },
 
-  messageYouUser: {
+  gamename: {
     fontWeight: 'bold',
-    color: "#948b38cd",
-    fontSize: 20
+    color: "white",
+    fontSize: 22,
   },
 
-  messageUser: {
+  gamecreator: {
     fontWeight: 'bold',
     color: "#4f4f4fcd",
-    fontSize: 17
+    fontSize: 17,
   },
-  messageText: {
+  gamebet: {
     marginTop: 5,
   },
 })

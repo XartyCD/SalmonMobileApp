@@ -22,7 +22,7 @@ export default ExchangerPopup = ({ onClose }) => {
   return (
     <View style={styles.popup_wrapper}>
       
-        <Text>{user}, Твой макасын</Text>
+        <Text>{user}, Обменник</Text>
         <Pressable
             onPress={onClose}
             ><Image
