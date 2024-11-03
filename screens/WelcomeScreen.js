@@ -173,6 +173,7 @@ export default WelcomeScreen = ({ navigation }) => {
             if (!data.success) {
               throw new Error(data.message)
             } else {
+              // Пропускаем в аккаунт
               setUser(checkedNewName) // Записываем валидное введенное имя в состояние
             }
           } catch (error) {

@@ -100,6 +100,7 @@ app.post("/register", (req, res) => {
     if (results[0].count > 0) {
       res.status(400).json({ success: false })
     } else {
+      
       // Регистрация нового пользователя
       const inActive = true
 
@@ -125,9 +126,11 @@ app.post("/register", (req, res) => {
       )
 
       const balance = 0
-      const insertQuery2 = `INSERT INTO userRating (user, balance) VALUES (?, ?)`
+      const countTap = 0
+      const priceUpgradeTap = 0
+      const insertQuery2 = `INSERT INTO userRating (user, balance, countTap, priceUpgradeTap) VALUES (?, ?, ?, ?)`
 
-      pool.query(insertQuery2, [checkedNewName, balance], (error, results) => {
+      pool.query(insertQuery2, [checkedNewName, balance, countTap, priceUpgradeTap], (error, results) => {
         if (error) {
           console.error("Ошибка при отправке баланса на сервер:", error)
           res.status(500).json({ success: false, message: "Ошибка баланса" })
@@ -155,7 +158,7 @@ app.post("/confirmsecretkey", (req, res) => {
     }
 
     if (results.length === 1) {
-      
+
       if (key === results[0].secretKey) {
         if (results[0].inActive === "0") {
           const updateInActive =
@@ -182,6 +185,33 @@ app.post("/confirmsecretkey", (req, res) => {
     }
   })
 })
+
+
+app.post("/firstdataload", (req, res) => {
+  const { user } = req.body
+
+  // Запрос для получения всех сообщений, сортированных по времени
+  const query = "SELECT * FROM userRating WHERE user = ?"
+
+  pool.query(query, [user], (error, results) => {
+    if (error) {
+      console.error(
+        "Ошибка при выполнении загрузки данных из дб:",
+        error
+      )
+      res
+        .status(500)
+        .json({ success: false, message: "Ошибка при получении первичных данных из дб" })
+      return
+    }
+
+    // Возвращаем список рейтинга
+    res.status(200).json({ success: true, date: results })
+  })
+})
+
+
+
 
 // API РЕГИСТРАЦИИ И АВТОРИЗАЦИИ
 

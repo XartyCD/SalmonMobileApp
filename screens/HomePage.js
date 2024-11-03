@@ -46,6 +46,33 @@ export default function HomePage({ navigation }) {
     balanceRef.current = balance
   }, [balance])
 
+
+
+  // Вывод AsyncStorage в консоль (для отладки)
+  async function getAllDataFromAsyncStorage() {
+    try {
+      // Получаем все ключи
+      const keys = await AsyncStorage.getAllKeys();
+  
+      // Получаем все пары ключ-значение
+      const result = await AsyncStorage.multiGet(keys);
+  
+      // Преобразуем результат в объект для удобства использования
+      const allData = result.reduce((acc, [key, value]) => {
+        acc[key] = value;
+        return acc;
+      }, {});
+  
+      console.log("Все данные из AsyncStorage:", allData);
+      return allData;
+    } catch (error) {
+      console.error("Ошибка при получении данных из AsyncStorage:", error);
+    }
+  }
+
+
+
+  // Функция на сохранение данных
   const saveData = async (key, value) => {
     try {
       await AsyncStorage.setItem(key, JSON.stringify(value))
@@ -55,6 +82,7 @@ export default function HomePage({ navigation }) {
     }
   }
 
+  // Функция на загрузку данных
   const loadData = async (key) => {
     try {
       const value = await AsyncStorage.getItem(key)
@@ -68,35 +96,82 @@ export default function HomePage({ navigation }) {
     return null
   }
 
+
+
   // Загрузить данные при старте приложения (срабатывает ТОЛЬКО при первом ренддере, (переключение вкладок не перерендеривает))
   const loadAppData = async () => {
+    let loadFromBase = false
 
-    try {
-      // Загружаем данные из AsyncStorage
-      const savedBalance = await loadData("balance")
-      const countTap = await loadData("countTap")
-      const priceUpgradeTap = await loadData("priceUpgradeTap")
-
-      // Устанавливаем состояние, если данные найдены
-      if (savedBalance) setBalance(savedBalance)
-      if (countTap) setcountTap(countTap)
-      if (priceUpgradeTap) setpriceUpgradeTap(priceUpgradeTap)
-
-      // Возвращаем true, если все данные успешно загружены
-      return true
+    try { // Проверка на то, загружены ли актуальные данные с базы (при успешной АВТОРИЗАЦИИ в аккаунт)
+      loadFromBase = await loadData("loadfrombase") 
     } catch (error) {
-      console.error("Ошибка при загрузке данных:", error)
-      // Возвращаем false, если произошла ошибка
-      return false
-    } 
+      console.error("Ошибка при проверке загруженности данных:", error)
+    }
+
+    console.log(loadFromBase, 777)
+    if (loadFromBase) {
+      try {
+        // Загружаем данные из AsyncStorage
+        const savedBalance = await loadData("balance");
+        const countTap = await loadData("countTap");
+        const priceUpgradeTap = await loadData("priceUpgradeTap");
+    
+        // Устанавливаем состояние, если данные найдены
+        if (savedBalance) setBalance(savedBalance);
+        if (countTap) setcountTap(countTap);
+        if (priceUpgradeTap) setpriceUpgradeTap(priceUpgradeTap);
+    
+        // Возвращаем true, если все данные успешно загружены
+        return true;
+      } catch (error) {
+        console.error("Ошибка при загрузке данных:", error)
+        // Возвращаем false, если произошла ошибка
+        return false
+      } 
+    } else {
+      const loadDataFromBase = async () => {
+        try {
+          const response = await fetch(`${CONNECTURL}/firstdataload`, {
+            method: 'POST',
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ user }),
+          });
+        
+          const data = await response.json();
+          console.log(data.date)
+          if (data.success) { 
+            console.log("первичный сейв в сторэдж")
+            console.log(data.date[0].balance)
+
+            await getAllDataFromAsyncStorage()
+            saveData("balance", Number(data.date[0].balance))
+            saveData("countTap", Number(data.date[0].countTap))
+            saveData("priceUpgradeTap", Number(data.date[0].priceUpgradeTap))
+// почему то на серв опять высылается 0 в балансе, починить
+            const loaded = true
+            saveData("loadfrombase", loaded)
+            await loadAppData() //
+            return true
+          }
+    
+        } catch (error) {
+          console.error('Ошибка при получении данных:', error);
+          return false
+        }
+      }
+
+      return loadDataFromBase()
+    }
+
   }
 
-  // Первичный запуск всего важного
-
+  // Первичный запуск всего важного (подгрузка данных из сторэджа/из бд, авторизация)
   useEffect(() => {
     const initializeApp = async () => {
-      const result = await loadAppData()
-      const connected = await checkInternetConnection()
+      const result = await loadAppData() // ожидание подгрузки данных
+      const connected = await checkInternetConnection() // проверка инета
       if (result && connected) {
         setIsDataLoaded(true)
         postYourRating()
@@ -115,9 +190,13 @@ export default function HomePage({ navigation }) {
     if (user !== null) {
       saveData("user", user)
     }
-    saveData("balance", balance)
-    saveData("countTap", countTap)
-    saveData("priceUpgradeTap", priceUpgradeTap)
+    if (isDataLoaded) {   // чтобы небыло отправки нулевых данных когда верные данные не успели подгрузиться
+      saveData("balance", balance)
+      saveData("countTap", countTap)
+      saveData("priceUpgradeTap", priceUpgradeTap)
+      getAllDataFromAsyncStorage()
+    }
+
   }, [user, balance, countTap, priceUpgradeTap])
 
   const leaveAccount = async () => {
@@ -321,7 +400,7 @@ export default function HomePage({ navigation }) {
 
     // Перед отправкой сделать проверку на версию!!!!!!!!!!!!!!!!!
 
-    const intervalId = setInterval(postYourRating, 60000) // Проверка каждые 60 секунд
+    const intervalId = setInterval(postYourRating, 900000) // Проверка каждые 60 секунд
 
     // Очистка при размонтировании компонента и удалении слушателя
     return () => {
