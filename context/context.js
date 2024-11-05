@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
@@ -12,8 +12,6 @@ export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
   const appVersion = "0.8.1"
-  const [checkedVersion, setcheckedVersion] = useState(false);
-
   const [socket, setSocket] = useState("")
 
   // const CONNECTURL = "https://yaprikolist.ru"
@@ -22,9 +20,10 @@ export const AppProvider = ({ children }) => {
 
   const [user, setUser] = useState(null);
   const [blockedVersion, setBlockedVersion] = useState(false);
+  const blockedVersionRef = useRef(blockedVersion);
 
 
-
+  
   const createSocket = () => {
     const newSocket = Platform.OS === 'ios' ? io('http://localhost:9003') : io('http://10.0.2.2:9003')
     setSocket(newSocket)
@@ -47,25 +46,24 @@ export const AppProvider = ({ children }) => {
   };
 
   
-  // Загрузить юзера при старте приложения
+  // Загрузить имя юзера при старте приложения (чтобы сразу перекидывать в аккаунт если имя в сторэдже)
   React.useEffect(() => {
     loadData('user').then(savedUser => {
       if (savedUser) setUser(savedUser);
     });
   }, []);
 
-
-
+// Проверка интернета (вынесено через контекст)
   const checkInternetConnection = async () => {
     const state = await NetInfo.fetch();
-    if (!checkedVersion && state.isConnected) {
-      console.log("Смена")
-      checkInfoApp()
+    if (state.isConnected) {
+      console.log("Проверка инета (+ версии)")
+      return await checkInfoApp()   // Автоматическая проверка версии после проверки интернета
     }
-    return state.isConnected;
+    return false
   };
 
-
+// Проверка версии (вынесено через контекст)
   const checkInfoApp = async () => {
     try {
       const response = await fetch(`${CONNECTURL}/checkappinfo`, {
@@ -77,11 +75,22 @@ export const AppProvider = ({ children }) => {
     
       const data = await response.json();
       if (data.info[0].version !== appVersion) { 
-        
+
+        console.log(appVersion, data.info[0].version)
+
+        blockedVersionRef.current = true
+
         setBlockedVersion(true)
         
+      } else {
+        console.log(appVersion, data.info[0].version, false)
+
+        blockedVersionRef.current = false
+
+        setBlockedVersion(false)
       }
-      setcheckedVersion(true)
+
+      return true
 
     } catch (error) {
       console.error('Ошибка при получения сообщений:', error);
@@ -90,7 +99,7 @@ export const AppProvider = ({ children }) => {
 
 
   return (
-    <AppContext.Provider value={{ appVersion, user, setUser, blockedVersion, checkedVersion, checkInfoApp, checkInternetConnection, socket, createSocket, CONNECTURL }}>
+    <AppContext.Provider value={{ appVersion, user, setUser, blockedVersion, blockedVersionRef, checkInfoApp, checkInternetConnection, socket, createSocket, CONNECTURL }}>
       {children}
     </AppContext.Provider>
   );

@@ -9,6 +9,8 @@ import RatingScreen from './screens/RatingScreen.js';
 import HomePage from './screens/HomePage.js';
 import ChatScreen from './screens/ChatScreen.js';
 
+import LoadingApp from './screens/LoadingApp.js';
+
 import LobbyPongScreen from './screens/PongGameScreens/LobbyPongScreen.js';
 import PongCreatePopup from './screens/PongGameScreens/PongCreatePopup.js';
 import GamePongScreen from './screens/PongGameScreens/GamePongScreen.js';
@@ -33,15 +35,39 @@ export default function App() {
 }
 
 function AppContent() {
-  const { user, blockedVersion, checkInfoApp } = useAppContext(); // используем контекст внутри компонента AppContent
-  console.log(blockedVersion)
-  checkInfoApp()
+  const { user, blockedVersionRef, checkInternetConnection } = useAppContext(); // используем контекст внутри компонента AppContent
+  const [isLoading, setIsLoading] = useState(true);
+
+  const initializeApp = async () => {
+    try {
+      // Выполнение вашей асинхронной операции
+      await checkInternetConnection(); // замените на вашу функцию
+      setIsLoading(true)
+    } catch (error) {
+      console.error("Ошибка инициализации:", error);
+    } finally {
+      setIsLoading(false); // Снятие флага загрузки после завершения
+    }
+  };
+
+  // Запуск функции инициализации при монтировании
+  useEffect(() => {
+    setTimeout(initializeApp, 7000)
+  }, []);
+
+  if (isLoading) {
+    return (
+      <LoadingApp /> // Отдельный экран загрузки
+    );
+  }
+
   return (
     <Stack.Navigator screenOptions={{
       headerShown: false, 
       cardStyle: { backgroundColor: 'white' }  // Устанавливаем фон для навигируемых страниц
     }}>
-      {blockedVersion ? (
+      {blockedVersionRef.current ? (
+        
         // Если версия заблокирована, показываем экран блокировки версии
         <Stack.Screen
           name="BlockVersionScreen"

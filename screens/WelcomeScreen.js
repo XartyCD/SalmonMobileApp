@@ -17,8 +17,7 @@ import * as Clipboard from "expo-clipboard"
 
 export default WelcomeScreen = ({ navigation }) => {
   const [nameWarn, setnameWarn] = useState("хэ")
-  const { user, setUser, appVersion, checkInternetConnection, CONNECTURL } =
-    useAppContext()
+  const { user, setUser, appVersion, checkInternetConnection, CONNECTURL } = useAppContext()
   const [checkedNewName, setCheckNewName] = useState(null)
 
   const [inputedKey, setInputedKey] = useState(null) // состояние для проверки при авторизации

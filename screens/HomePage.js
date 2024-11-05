@@ -20,7 +20,7 @@ import { Audio } from "expo-av"
 import { useAppContext } from "../context/context.js"
 
 export default function HomePage({ navigation }) {
-  const { checkInfoApp, checkedVersion, checkInternetConnection, CONNECTURL } =
+  const { checkInfoApp, checkInternetConnection, CONNECTURL } =
     useAppContext()
 
   const [isDataLoaded, setIsDataLoaded] = useState(false)
@@ -171,7 +171,7 @@ export default function HomePage({ navigation }) {
   useEffect(() => {
     const initializeApp = async () => {
       const result = await loadAppData() // ожидание подгрузки данных
-      const connected = await checkInternetConnection() // проверка инета
+      const connected = await checkInternetConnection() // проверка инета (+ проверка версии в контексте)
       if (result && connected) {
         setIsDataLoaded(true)
         postYourRating()
@@ -363,8 +363,10 @@ export default function HomePage({ navigation }) {
     setBalance(balance + 200)
   }
 
+  // Дублирование вызова функций из-за того что проверка инета и версии происходит при первом рендере, 
+  // а затем при дальнейшем взаимодействии с приложением
   const postYourRating = async () => {
-    console.log("Отправка...")
+    console.log("Отправка рейтинга в топ...")
     const connected = await checkInternetConnection()
     if (connected) {
       try {
@@ -384,13 +386,15 @@ export default function HomePage({ navigation }) {
           console.log(`Личный рейтинг отправлен ${balanceRef.current}`)
         }
       } catch (error) {
-        console.error("Ошибка при отправке данных:", error)
+        console.error("Ошибка при отправке рейтинга:", error)
       }
     } else {
       console.log(`Нет интернета ${balanceRef.current}`)
     }
   }
 
+
+  // действия при фокусировке на HomePage (при каждом открытии этого экрана)
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
       if (isDataLoaded) {
@@ -398,7 +402,7 @@ export default function HomePage({ navigation }) {
       }
     })
 
-    // Перед отправкой сделать проверку на версию!!!!!!!!!!!!!!!!!
+    // Проверка версии и инета происходит в самой функции отправки
 
     const intervalId = setInterval(postYourRating, 900000) // Проверка каждые 60 секунд
 
