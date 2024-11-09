@@ -49,15 +49,6 @@ export default WelcomeScreen = ({ navigation }) => {
     "Зюзьга",
   ]
 
-  // Проверка состояния сети при первом рендере компонента и каждые 60 секунд
-  useEffect(() => {
-    checkInternetConnection() // Проверка при первом рендере
-
-    // const intervalId = setInterval(checkInternetConnection, 60000); // Проверка каждые 20 секунд
-
-    // // Очистка интервала при размонтировании компонента
-    // return () => clearInterval(intervalId);
-  }, [])
 
   const askAccount = () => {
     Alert.alert("Такой лосось уже существует", "Это ваш аккаунт?", [
@@ -145,7 +136,7 @@ export default WelcomeScreen = ({ navigation }) => {
               alert("Аккаунт уже используется")
             } else {
               // Пропускаем при правильном ключе
-              console.log("Вход:", data)
+              console.log("Вход:")
               setUser(checkedNewName) // Записываем валидное введенное имя в состояние
             }
           } catch (error) {
@@ -252,7 +243,7 @@ export default WelcomeScreen = ({ navigation }) => {
             placeholder="Секретный ключ"
             // Обновляем состояние при изменении текста
             onChangeText={(e) => setSecretKey(e)}
-            // Привязка значения к input
+          // Привязка значения к input
           />
           <Pressable
             style={styles.topButton}
@@ -276,7 +267,7 @@ export default WelcomeScreen = ({ navigation }) => {
             placeholder="Секретный ключ"
             // Обновляем состояние при изменении текста
             onChangeText={(e) => setInputedKey(e)}
-            // Привязка значения к input
+          // Привязка значения к input
           />
           <Pressable
             style={styles.topButton}
@@ -293,7 +284,7 @@ export default WelcomeScreen = ({ navigation }) => {
             placeholder="Имя лосося"
             // Обновляем состояние при изменении текста
             onChangeText={(e) => setCheckNewName(e)}
-            // Привязка значения к input
+          // Привязка значения к input
           />
           <Pressable style={styles.topButton} onPress={saveUserName}>
             <Text>Продолжить</Text>

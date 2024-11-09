@@ -19,9 +19,9 @@ const io = socketIo(server, {
 
 const pool = mysql.createPool({
   // connectionLimit: 100, // Устанавливаем лимит соединений
-  // host: '31.129.35.98',
+  // host: '',
   // user: 'root',
-  // password: 'x@Wg^n$&s72r$T1yTh*17a2^q1i7*1vi^a*tl6^&te=1o#71a8',
+  // password: '',
   // database: 'SalmonGame'
   connectionLimit: 100, // Устанавливаем лимит соединений ;
   host: "localhost",
@@ -59,7 +59,7 @@ pool.getConnection((err, connection) => {
   connection.release()
 })
 
-app.get("/getrealtime", (req, res) => {
+app.get("/api/getrealtime", (req, res) => {
   const currentTime = Date.now()
 
   // Возвращаем текущее время
@@ -68,7 +68,7 @@ app.get("/getrealtime", (req, res) => {
 
 // API РЕГИСТРАЦИИ И АВТОРИЗАЦИИ
 
-app.post("/checkusers", (req, res) => {
+app.post("/api/checkusers", (req, res) => {
   const { checkedNewName } = req.body
   const query = "SELECT COUNT(*) AS count FROM regUsers WHERE user =?"
   pool.query(query, [checkedNewName], (error, results, fields) => {
@@ -86,7 +86,7 @@ app.post("/checkusers", (req, res) => {
   })
 })
 
-app.post("/register", (req, res) => {
+app.post("/api/register", (req, res) => {
   const { checkedNewName, secretKey } = req.body
   console.log(checkedNewName, secretKey)
   const query = "SELECT COUNT(*) AS count FROM regUsers WHERE user =?"
@@ -100,7 +100,7 @@ app.post("/register", (req, res) => {
     if (results[0].count > 0) {
       res.status(400).json({ success: false })
     } else {
-      
+
       // Регистрация нового пользователя
       const inActive = true
 
@@ -127,10 +127,9 @@ app.post("/register", (req, res) => {
 
       const balance = 0
       const countTap = 0
-      const priceUpgradeTap = 0
-      const insertQuery2 = `INSERT INTO userRating (user, balance, countTap, priceUpgradeTap) VALUES (?, ?, ?, ?)`
+      const insertQuery2 = `INSERT INTO userRating (user, balance, countTap) VALUES (?, ?, ?, ?)`
 
-      pool.query(insertQuery2, [checkedNewName, balance, countTap, priceUpgradeTap], (error, results) => {
+      pool.query(insertQuery2, [checkedNewName, balance, countTap], (error, results) => {
         if (error) {
           console.error("Ошибка при отправке баланса на сервер:", error)
           res.status(500).json({ success: false, message: "Ошибка баланса" })
@@ -146,7 +145,7 @@ app.post("/register", (req, res) => {
   })
 })
 
-app.post("/confirmsecretkey", (req, res) => {
+app.post("/api/confirmsecretkey", (req, res) => {
   const { username, key } = req.body
   const query = "SELECT secretKey, inActive FROM regUsers WHERE BINARY user = ?"
 
@@ -187,7 +186,7 @@ app.post("/confirmsecretkey", (req, res) => {
 })
 
 
-app.post("/firstdataload", (req, res) => {
+app.post("/api/firstdataload", (req, res) => {
   const { user } = req.body
 
   // Запрос для получения всех сообщений, сортированных по времени
@@ -217,37 +216,37 @@ app.post("/firstdataload", (req, res) => {
 
 // ВЫЙТИ ИЗ АККАУНТА
 
-app.post("/leave-account", (req, res) => {
-  const { user, balance, countTap, priceUpgradeTap } = req.body
+app.post("/api/leave-account", (req, res) => {
+  const { user, balance, countTap } = req.body
 
-  const saveDataQuery = "UPDATE userRating SET balance = ?, countTap = ?, priceUpgradeTap = ? WHERE user = ?"
+  const saveDataQuery = "UPDATE userRating SET balance = ?, countTap = ? WHERE user = ?"
 
-  pool.query(saveDataQuery, [balance, countTap, priceUpgradeTap, user], (error, results) => {
+  pool.query(saveDataQuery, [balance, countTap, user], (error, results) => {
+    if (error) {
+      console.error("Ошибка при обновлении польз данных:", error)
+      res.status(500).json({ success: false, message: "Ошибка при обновлении данных польз" })
+      return
+    }
+
+    // Заменить inActive на 0
+    const leaveQuery = `UPDATE regUsers SET inActive = 0 WHERE user = ?`
+
+    pool.query(leaveQuery, [user], (error, results) => {
       if (error) {
-        console.error("Ошибка при обновлении польз данных:", error)
-        res.status(500).json({ success: false, message: "Ошибка при обновлении данных польз" })
+        console.error("Ошибка при замене inActive при выходе:", error)
+        res.status(500).json({ success: false, message: "Ошибка выхода" })
         return
       }
 
-      // Заменить inActive на 0
-      const leaveQuery = `UPDATE regUsers SET inActive = 0 WHERE user = ?`
-
-      pool.query(leaveQuery, [user], (error, results) => {
-        if (error) {
-          console.error("Ошибка при замене inActive при выходе:", error)
-          res.status(500).json({ success: false, message: "Ошибка выхода" })
-          return
-        }
-
-        res.status(200).json({ success: true, message: "Успешный выход и сохранение данных в базе" })
-      })
-    }
+      res.status(200).json({ success: true, message: "Успешный выход и сохранение данных в базе" })
+    })
+  }
   )
 })
 
 // API УДАЛЕНИЕ АККАУНТА
 
-app.delete("/delete-account", (req, res) => {
+app.delete("/api/delete-account", (req, res) => {
   const { user } = req.body
 
   // Удалить лосося пользователя
@@ -278,7 +277,7 @@ app.delete("/delete-account", (req, res) => {
 
 // API РЕЙТИНГА
 
-app.get("/gettoprating", (req, res) => {
+app.get("/api/gettoprating", (req, res) => {
   // Запрос для получения всех сообщений, сортированных по времени
   const query = "SELECT * FROM userRating ORDER BY balance DESC;"
 
@@ -299,19 +298,19 @@ app.get("/gettoprating", (req, res) => {
   })
 })
 
-app.post("/postyourrating", (req, res) => {
-  const { user, balance } = req.body
+app.post("/api/postyourrating", (req, res) => {
+  const { user, balance, countTap } = req.body
 
-  const insertQuery = `UPDATE userRating SET balance = ? WHERE user = ?`
+  const insertQuery = `UPDATE userRating SET balance = ?, countTap = ? WHERE user = ?`
 
-  pool.query(insertQuery, [balance, user], (error, results) => {
+  pool.query(insertQuery, [balance, countTap, user], (error, results) => {
     if (error) {
-      console.error("Ошибка при отправке баланса на сервер:", error)
-      res.status(500).json({ success: false, message: "Ошибка баланса" })
+      console.error("Ошибка при отправке локальных данных:", error)
+      res.status(500).json({ success: false, message: "Ошибка отправки локальных данных" })
       return
     }
 
-    res.status(200).json({ success: true, message: "Личный рейтинг обновлен" })
+    res.status(200).json({ success: true, message: "Личные данные на сервере обновлены!" })
   })
 })
 
@@ -319,7 +318,7 @@ app.post("/postyourrating", (req, res) => {
 
 // API ЧАТА
 
-app.get("/getmessagesglobalchat", (req, res) => {
+app.get("/api/getmessagesglobalchat", (req, res) => {
   // Запрос для получения всех сообщений, сортированных по времени
   const query = "SELECT * FROM chatlogs ORDER BY time ASC;"
 
@@ -340,7 +339,7 @@ app.get("/getmessagesglobalchat", (req, res) => {
   })
 })
 
-app.post("/sendmessageglobalchat", (req, res) => {
+app.post("/api/sendmessageglobalchat", (req, res) => {
   const { user, sendingMessage } = req.body
 
   const getCurrentTimeFormatted = () =>
@@ -542,7 +541,7 @@ io.on("connection", (socket) => {
 })
 
 // Маршрут для получения списка игр
-app.get("/getlistgames", (req, res) => {
+app.get("/api/getlistgames", (req, res) => {
   const query = "SELECT * FROM poolPongGame ORDER BY time ASC;"
 
   pool.query(query, (error, results) => {
@@ -558,7 +557,7 @@ app.get("/getlistgames", (req, res) => {
   })
 })
 
-app.get("/checkappinfo", (req, res) => {
+app.get("/api/checkappinfo", (req, res) => {
   // Запрос для получения всех сообщений, сортированных по времени
   const query = "SELECT version FROM actualInfoApp"
 

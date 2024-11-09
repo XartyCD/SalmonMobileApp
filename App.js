@@ -4,7 +4,7 @@ import { Platform, ScrollView, StyleSheet, TextInput, Text, View, Pressable, Ima
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppContext, AppProvider } from './context/context.js';
 import BlockVersionScreen from './screens/BlockVersionScreen.js';
-import WelcomeScreen from './screens/WelcomeScreen.js' 
+import WelcomeScreen from './screens/WelcomeScreen.js'
 import RatingScreen from './screens/RatingScreen.js';
 import HomePage from './screens/HomePage.js';
 import ChatScreen from './screens/ChatScreen.js';
@@ -38,21 +38,27 @@ function AppContent() {
   const { user, blockedVersionRef, checkInternetConnection } = useAppContext(); // используем контекст внутри компонента AppContent
   const [isLoading, setIsLoading] = useState(true);
 
+
+  // Запуск всего важного при старте приложения
   const initializeApp = async () => {
     try {
-      // Выполнение вашей асинхронной операции
-      await checkInternetConnection(); // замените на вашу функцию
+      // Выполнение  асинхронной операции
+      await checkInternetConnection(true); // проверяет версию и инет
       setIsLoading(true)
     } catch (error) {
       console.error("Ошибка инициализации:", error);
     } finally {
-      setIsLoading(false); // Снятие флага загрузки после завершения
+      setTimeout(showLoadnigScreen, 1000) // Снятие флага загрузки после завершения
     }
   };
 
+  const showLoadnigScreen = () => {
+    setIsLoading(false)
+  }
+
   // Запуск функции инициализации при монтировании
   useEffect(() => {
-    setTimeout(initializeApp, 7000)
+    initializeApp()
   }, []);
 
   if (isLoading) {
@@ -61,13 +67,15 @@ function AppContent() {
     );
   }
 
+
+
   return (
     <Stack.Navigator screenOptions={{
-      headerShown: false, 
+      headerShown: false,
       cardStyle: { backgroundColor: 'white' }  // Устанавливаем фон для навигируемых страниц
     }}>
       {blockedVersionRef.current ? (
-        
+
         // Если версия заблокирована, показываем экран блокировки версии
         <Stack.Screen
           name="BlockVersionScreen"

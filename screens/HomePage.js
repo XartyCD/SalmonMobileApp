@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { StatusBar } from "expo-status-bar"
 import {
+  AppState,
+  BackHandler,
   Platform,
   ScrollView,
   StyleSheet,
@@ -20,6 +22,8 @@ import { Audio } from "expo-av"
 import { useAppContext } from "../context/context.js"
 
 export default function HomePage({ navigation }) {
+  const appState = useRef(AppState.currentState);
+
   const { checkInfoApp, checkInternetConnection, CONNECTURL } =
     useAppContext()
 
@@ -31,7 +35,8 @@ export default function HomePage({ navigation }) {
   const [balance, setBalance] = useState(0)
   const balanceRef = useRef(balance)
   const [countTap, setcountTap] = useState(0)
-  const [priceUpgradeTap, setpriceUpgradeTap] = useState(0)
+  const countTapRef = useRef(countTap)
+
   const upgradeTapPrices = [
     60, 250, 550, 1300, 2900, 4800, 7000, 12500, 17000, 38000, 65000, 95000,
     180000, 330000, 490000, 880000, 2000000, 5000000, 10000000,
@@ -46,6 +51,10 @@ export default function HomePage({ navigation }) {
     balanceRef.current = balance
   }, [balance])
 
+  useEffect(() => {
+    countTapRef.current = countTap
+  }, [countTap])
+
 
 
   // Вывод AsyncStorage в консоль (для отладки)
@@ -53,16 +62,16 @@ export default function HomePage({ navigation }) {
     try {
       // Получаем все ключи
       const keys = await AsyncStorage.getAllKeys();
-  
+
       // Получаем все пары ключ-значение
       const result = await AsyncStorage.multiGet(keys);
-  
+
       // Преобразуем результат в объект для удобства использования
       const allData = result.reduce((acc, [key, value]) => {
         acc[key] = value;
         return acc;
       }, {});
-  
+
       console.log("Все данные из AsyncStorage:", allData);
       return allData;
     } catch (error) {
@@ -96,6 +105,26 @@ export default function HomePage({ navigation }) {
     return null
   }
 
+  //Загрузка данных из локалки при первом рендере
+  const loadDataInAsyncStorage = async () => {
+    try {
+      // Загружаем данные из AsyncStorage
+      const savedBalance = await loadData("balance");
+      const countTap = await loadData("countTap");
+
+      // Устанавливаем состояние, если данные найдены
+      if (savedBalance) setBalance(savedBalance);
+      if (countTap) setcountTap(countTap);
+
+      // Возвращаем true, если все данные успешно загружены
+      return true;
+
+    } catch (error) {
+
+      console.error("Ошибка при загрузке данных:", error)
+      return false
+    }
+  }
 
 
   // Загрузить данные при старте приложения (срабатывает ТОЛЬКО при первом ренддере, (переключение вкладок не перерендеривает))
@@ -103,31 +132,20 @@ export default function HomePage({ navigation }) {
     let loadFromBase = false
 
     try { // Проверка на то, загружены ли актуальные данные с базы (при успешной АВТОРИЗАЦИИ в аккаунт)
-      loadFromBase = await loadData("loadfrombase") 
+      loadFromBase = await loadData("loadfrombase")
     } catch (error) {
       console.error("Ошибка при проверке загруженности данных:", error)
     }
 
-    console.log(loadFromBase, 777)
+    console.log(loadFromBase, "Загрузка данных")
     if (loadFromBase) {
-      try {
-        // Загружаем данные из AsyncStorage
-        const savedBalance = await loadData("balance");
-        const countTap = await loadData("countTap");
-        const priceUpgradeTap = await loadData("priceUpgradeTap");
-    
-        // Устанавливаем состояние, если данные найдены
-        if (savedBalance) setBalance(savedBalance);
-        if (countTap) setcountTap(countTap);
-        if (priceUpgradeTap) setpriceUpgradeTap(priceUpgradeTap);
-    
-        // Возвращаем true, если все данные успешно загружены
-        return true;
-      } catch (error) {
-        console.error("Ошибка при загрузке данных:", error)
-        // Возвращаем false, если произошла ошибка
-        return false
-      } 
+
+      const result = await loadDataInAsyncStorage()
+      await postYourRating()
+
+      return result
+
+      // Загрузка данных с бд при авторизации в аккаунт
     } else {
       const loadDataFromBase = async () => {
         try {
@@ -138,24 +156,27 @@ export default function HomePage({ navigation }) {
             },
             body: JSON.stringify({ user }),
           });
-        
-          const data = await response.json();
-          console.log(data.date)
-          if (data.success) { 
-            console.log("первичный сейв в сторэдж")
-            console.log(data.date[0].balance)
 
-            await getAllDataFromAsyncStorage()
+          const data = await response.json();
+          console.log("Данные с сервера при заходе", data.date)
+          if (data.success) {
+
+            console.log("первичный сейв в сторэдж")
+
             saveData("balance", Number(data.date[0].balance))
             saveData("countTap", Number(data.date[0].countTap))
-            saveData("priceUpgradeTap", Number(data.date[0].priceUpgradeTap))
-// почему то на серв опять высылается 0 в балансе, починить
+
+            // почему то на серв опять высылается 0 в балансе, починить
             const loaded = true
             saveData("loadfrombase", loaded)
-            await loadAppData() //
-            return true
+            await getAllDataFromAsyncStorage()
+
+
+            const result = await loadDataInAsyncStorage()
+            console.log("Итог лоада", result)
+            return result
           }
-    
+
         } catch (error) {
           console.error('Ошибка при получении данных:', error);
           return false
@@ -170,14 +191,14 @@ export default function HomePage({ navigation }) {
   // Первичный запуск всего важного (подгрузка данных из сторэджа/из бд, авторизация)
   useEffect(() => {
     const initializeApp = async () => {
-      const result = await loadAppData() // ожидание подгрузки данных
+      console.log("Инициализация из Home...")
       const connected = await checkInternetConnection() // проверка инета (+ проверка версии в контексте)
+      const result = await loadAppData() // ожидание подгрузки данных
       if (result && connected) {
         setIsDataLoaded(true)
-        postYourRating()
       }
       console.log(
-        "Загрузка прогресса прошла:",
+        "Первичная инициализация завершена",
         result ? "успешно" : "с ошибкой"
       )
     }
@@ -193,39 +214,67 @@ export default function HomePage({ navigation }) {
     if (isDataLoaded) {   // чтобы небыло отправки нулевых данных когда верные данные не успели подгрузиться
       saveData("balance", balance)
       saveData("countTap", countTap)
-      saveData("priceUpgradeTap", priceUpgradeTap)
-      getAllDataFromAsyncStorage()
+
     }
 
-  }, [user, balance, countTap, priceUpgradeTap])
+  }, [user, balance, countTap])
+
+
+
+
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState) => {
+      // Проверяем, если приложение переходит в фоновый режим
+      if (appState.current === 'active' && (nextAppState === 'inactive' || nextAppState === 'background')) {
+        console.log('Приложение ушло в фоновый режим или неактивное состояние');
+        postYourRating()
+      }
+      appState.current = nextAppState;
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+
+
+
+
 
   const leaveAccount = async () => {
-    try {
-      const response = await fetch(`${CONNECTURL}/leave-account`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ user, balance, countTap, priceUpgradeTap }),
-      })
+    const connected = await checkInternetConnection(true)
+    if (connected) {
+      try {
+        const response = await fetch(`${CONNECTURL}/leave-account`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ user, balance, countTap }),
+        })
 
-      const data = await response.json()
-      if (data.success) {
-        // Удаляем данные из AsyncStorage
-        await AsyncStorage.clear()
+        const data = await response.json()
+        if (data.success) {
+          // Удаляем данные из AsyncStorage
+          await AsyncStorage.clear()
 
-        // Сбрасываем состояния
-        setUser(null)
-        setBalance(0)
-        setcountTap(0)
-        setpriceUpgradeTap(0)
+          // Сбрасываем состояния
+          setUser(null)
+          setBalance(0)
+          setcountTap(0)
 
-        alert("Вы успешно вышли!")
-      } else {
-        alert("Ошибка выхода!")
+          alert("Вы успешно вышли!")
+        } else {
+          alert("Ошибка выхода!")
+        }
+      } catch (e) {
+        console.error("Ошибка выхода", e)
       }
-    } catch (e) {
-      console.error("Ошибка выхода", e)
+    } else {
+      alert("Нет подключения к интернету!")
     }
   }
 
@@ -248,7 +297,6 @@ export default function HomePage({ navigation }) {
         setUser(null)
         setBalance(0)
         setcountTap(0)
-        setpriceUpgradeTap(0)
 
         alert("Прогресс успешно сброшен!")
       } else {
@@ -260,7 +308,7 @@ export default function HomePage({ navigation }) {
   }
 
   const confirmResetProgress = async () => {
-    const connected = await checkInternetConnection()
+    const connected = await checkInternetConnection(true)
     if (connected) {
       Alert.alert(
         "Сбросить прогресс?", // Заголовок
@@ -295,8 +343,8 @@ export default function HomePage({ navigation }) {
   useEffect(() => {
     return sound
       ? () => {
-          sound.unloadAsync()
-        }
+        sound.unloadAsync()
+      }
       : undefined
   }, [sound])
 
@@ -308,7 +356,7 @@ export default function HomePage({ navigation }) {
     alert("Настройки еще недоступны")
   }
 
-  const onPressLearnMore = () => {
+  const tapMainButton = () => {
     tapUpBalance(countTapList[countTap])
     playSound()
   }
@@ -318,7 +366,7 @@ export default function HomePage({ navigation }) {
   }
 
   const openRating = async () => {
-    const connected = await checkInternetConnection()
+    const connected = await checkInternetConnection(true)
     if (connected) {
       navigation.navigate("RatingScreen")
     } else {
@@ -327,7 +375,7 @@ export default function HomePage({ navigation }) {
   }
 
   const openChat = async () => {
-    const connected = await checkInternetConnection()
+    const connected = await checkInternetConnection(true)
     if (connected) {
       navigation.navigate("ChatScreen")
     } else {
@@ -336,7 +384,7 @@ export default function HomePage({ navigation }) {
   }
 
   const openBattle = async () => {
-    const connected = await checkInternetConnection()
+    const connected = await checkInternetConnection(true)
     if (connected) {
       navigation.navigate("LobbyPongScreen")
     } else {
@@ -349,10 +397,10 @@ export default function HomePage({ navigation }) {
   }
 
   const upgradeClick = () => {
-    if (balance >= upgradeTapPrices[priceUpgradeTap]) {
-      setpriceUpgradeTap(priceUpgradeTap + 1)
+    if (balance >= upgradeTapPrices[countTap]) {
+
       setcountTap(countTap + 1)
-      setBalance(balance - upgradeTapPrices[priceUpgradeTap])
+      setBalance(balance - upgradeTapPrices[countTap])
       alert("Апгрейд прошел успешно!")
     } else {
       alert("Недостаточно средств")
@@ -366,8 +414,9 @@ export default function HomePage({ navigation }) {
   // Дублирование вызова функций из-за того что проверка инета и версии происходит при первом рендере, 
   // а затем при дальнейшем взаимодействии с приложением
   const postYourRating = async () => {
-    console.log("Отправка рейтинга в топ...")
-    const connected = await checkInternetConnection()
+    console.log("Отправка прогресса в бд...")
+    const connected = await checkInternetConnection(true)
+    console.log(connected)
     if (connected) {
       try {
         const response = await fetch(`${CONNECTURL}/postyourrating`, {
@@ -375,7 +424,7 @@ export default function HomePage({ navigation }) {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ user, balance: balanceRef.current }),
+          body: JSON.stringify({ user, balance: balanceRef.current, countTap: countTapRef.current }),
         })
 
         const data = await response.json()
@@ -383,13 +432,13 @@ export default function HomePage({ navigation }) {
         if (!data.success) {
           throw new Error(data.message)
         } else {
-          console.log(`Личный рейтинг отправлен ${balanceRef.current}`)
+          console.log(`Личный рейтинг отправлен ${balanceRef.current} ${countTapRef.current}`)
         }
       } catch (error) {
         console.error("Ошибка при отправке рейтинга:", error)
       }
     } else {
-      console.log(`Нет интернета ${balanceRef.current}`)
+      console.log(`Нет интернета для отправки данных на сервер`)
     }
   }
 
@@ -404,11 +453,11 @@ export default function HomePage({ navigation }) {
 
     // Проверка версии и инета происходит в самой функции отправки
 
-    const intervalId = setInterval(postYourRating, 900000) // Проверка каждые 60 секунд
+    // const intervalId = setInterval(postYourRating, 60000) // Проверка каждые 60 секунд
 
     // Очистка при размонтировании компонента и удалении слушателя
     return () => {
-      clearInterval(intervalId)
+      // clearInterval(intervalId)
       unsubscribe()
     }
   }, [navigation, balance])
@@ -477,7 +526,7 @@ export default function HomePage({ navigation }) {
                 onPress={upgradeClick}
               >
                 <Text style={styles.upgradeTextButtonStyle}>
-                  Прокачать Тап за {upgradeTapPrices[priceUpgradeTap]}{" "}
+                  Прокачать Тап за {upgradeTapPrices[countTap]}{" "}
                 </Text>
               </Pressable>
             </View>
@@ -511,7 +560,7 @@ export default function HomePage({ navigation }) {
               },
               styles.mainButtonStyle,
             ]}
-            onPress={onPressLearnMore}
+            onPress={tapMainButton}
           >
             <Image
               style={{

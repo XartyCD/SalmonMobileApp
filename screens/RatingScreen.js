@@ -4,7 +4,7 @@ import { useAppContext } from '../context/context.js';
 
 
 
-export default RatingScreen = ( { navigation } ) => { 
+export default RatingScreen = ({ navigation }) => {
   const { user, setUser, CONNECTURL } = useAppContext();
   const [rating, setRating] = useState([]); // Состояние для хранения рейтинга
 
@@ -16,12 +16,11 @@ export default RatingScreen = ( { navigation } ) => {
           'Content-Type': 'application/json',
         },
       });
-    
+
       const data = await response.json();
       // Сортировка массива по полю 'balance' от большего к меньшему
       const sortedRating = data.rating.sort((a, b) => b.balance - a.balance);
       setRating(sortedRating);
-      console.log(sortedRating);
 
     } catch (error) {
       console.error('Ошибка при получении рейтинга:', error);
@@ -33,20 +32,20 @@ export default RatingScreen = ( { navigation } ) => {
     const unsubscribe = navigation.addListener('focus', () => {
       globalRatingUpdate();
     });
-  
+
     const intervalId = setInterval(globalRatingUpdate, 120000); // Проверка каждые 120 секунд
-  
+
     // Очистка при размонтировании компонента и удалении слушателя
     return () => {
       clearInterval(intervalId);
       unsubscribe();
     };
   }, [navigation]);
-  
+
   return (
     <View style={styles.mainWrapper}>
       <View style={styles.topPanel}>
-          <Text style={styles.chatName}>Рейтинг лучших лососей</Text>
+        <Text style={styles.chatName}>Рейтинг лучших лососей</Text>
       </View>
       <View style={styles.ratingWrapper}>
         <ScrollView>
@@ -56,7 +55,7 @@ export default RatingScreen = ( { navigation } ) => {
                 {rate.user === user ? (
                   <Text style={styles.messageYouUser}>{rate.user}</Text>
                 ) : (
-                  <Text style={styles.messageUser}>{rate.user}</Text> 
+                  <Text style={styles.messageUser}>{rate.user}</Text>
                 )}
                 <Text style={styles.messageText}>{rate.balance}</Text>
               </View>
@@ -74,7 +73,7 @@ export default RatingScreen = ( { navigation } ) => {
 const styles = StyleSheet.create({
   mainWrapper: {
     marginTop: 48.9,
-    marginBottom: 20, 
+    marginBottom: 20,
     flexDirection: "column"
   },
   topPanel: {
@@ -159,5 +158,5 @@ const styles = StyleSheet.create({
   sendButton: {
     width: "100%"
   }
-  
+
 })
