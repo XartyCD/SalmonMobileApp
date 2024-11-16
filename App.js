@@ -36,7 +36,7 @@ export default function App() {
 
 function AppContent() {
   const { user, blockedVersionRef, checkInternetConnection } = useAppContext(); // используем контекст внутри компонента AppContent
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); //
 
 
   // Запуск всего важного при старте приложения
@@ -44,7 +44,7 @@ function AppContent() {
     try {
       // Выполнение  асинхронной операции
       await checkInternetConnection(true); // проверяет версию и инет
-      setIsLoading(true)
+      setIsLoading(false) // 
     } catch (error) {
       console.error("Ошибка инициализации:", error);
     } finally {

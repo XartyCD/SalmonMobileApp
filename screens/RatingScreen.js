@@ -1,5 +1,6 @@
 import { Platform, StyleSheet, ScrollView, TextInput, Text, View, Pressable, Image, Alert } from 'react-native';
 import React, { useState, useContext, useEffect, useRef } from 'react';
+import LinearGradient from 'react-native-linear-gradient';
 import { useAppContext } from '../context/context.js';
 
 
@@ -48,22 +49,27 @@ export default RatingScreen = ({ navigation }) => {
         <Text style={styles.chatName}>Рейтинг лучших лососей</Text>
       </View>
       <View style={styles.ratingWrapper}>
-        <ScrollView>
-          {Array.isArray(rating) ? (
-            rating.map((rate, index) => (
-              <View key={index} style={styles.messageBlock}>
-                {rate.user === user ? (
-                  <Text style={styles.messageYouUser}>{rate.user}</Text>
-                ) : (
-                  <Text style={styles.messageUser}>{rate.user}</Text>
-                )}
-                <Text style={styles.messageText}>{rate.balance}</Text>
-              </View>
-            ))
-          ) : (
-            <Text>Вы не подключены к интернету</Text> // Сообщение, если сообщений нет
-          )}
-        </ScrollView>
+        <LinearGradient
+          colors={['#4c669f', '#3b5998', '#192f6a']} // Цвета градиента
+          style={styles.background}
+        >
+          <ScrollView>
+            {Array.isArray(rating) ? (
+              rating.map((rate, index) => (
+                <View key={index} style={styles.messageBlock}>
+                  {rate.user === user ? (
+                    <Text style={styles.messageYouUser}>{rate.user}</Text>
+                  ) : (
+                    <Text style={styles.messageUser}>{rate.user}</Text>
+                  )}
+                  <Text style={styles.messageText}>{rate.balance}</Text>
+                </View>
+              ))
+            ) : (
+              <Text>Вы не подключены к интернету</Text> // Сообщение, если сообщений нет
+            )}
+          </ScrollView>
+        </LinearGradient>
       </View>
     </View>
   )
@@ -74,7 +80,7 @@ const styles = StyleSheet.create({
   mainWrapper: {
     marginTop: 48.9,
     marginBottom: 20,
-    flexDirection: "column"
+    flexDirection: "column",
   },
   topPanel: {
     backgroundColor: "#6d95b3cd",

@@ -24,7 +24,7 @@ import { useAppContext } from "../context/context.js"
 export default function HomePage({ navigation }) {
   const appState = useRef(AppState.currentState);
 
-  const { checkInfoApp, checkInternetConnection, CONNECTURL } =
+  const { sessionId, setSessionId, checkInfoApp, checkInternetConnection, CONNECTURL } =
     useAppContext()
 
   const [isDataLoaded, setIsDataLoaded] = useState(false)
@@ -192,7 +192,7 @@ export default function HomePage({ navigation }) {
   useEffect(() => {
     const initializeApp = async () => {
       console.log("Инициализация из Home...")
-      const connected = await checkInternetConnection() // проверка инета (+ проверка версии в контексте)
+      const connected = await checkInternetConnection(false, true) // проверка инета (+ проверка в контексте)
       const result = await loadAppData() // ожидание подгрузки данных
       if (result && connected) {
         setIsDataLoaded(true)
@@ -211,13 +211,17 @@ export default function HomePage({ navigation }) {
     if (user !== null) {
       saveData("user", user)
     }
+    if (sessionId !== null) {
+      saveData("sessionId", sessionId)
+      console.log("запись в сторедж")
+    }
     if (isDataLoaded) {   // чтобы небыло отправки нулевых данных когда верные данные не успели подгрузиться
       saveData("balance", balance)
       saveData("countTap", countTap)
 
     }
 
-  }, [user, balance, countTap])
+  }, [user, sessionId, balance, countTap])
 
 
 
@@ -258,13 +262,15 @@ export default function HomePage({ navigation }) {
 
         const data = await response.json()
         if (data.success) {
-          // Удаляем данные из AsyncStorage
-          await AsyncStorage.clear()
 
           // Сбрасываем состояния
           setUser(null)
+          setSessionId(null)
           setBalance(0)
           setcountTap(0)
+
+          // Удаляем данные из AsyncStorage
+          await AsyncStorage.clear()
 
           alert("Вы успешно вышли!")
         } else {
@@ -308,7 +314,7 @@ export default function HomePage({ navigation }) {
   }
 
   const confirmResetProgress = async () => {
-    const connected = await checkInternetConnection(true)
+    const connected = await checkInternetConnection(true, true)
     if (connected) {
       Alert.alert(
         "Сбросить прогресс?", // Заголовок
@@ -366,7 +372,7 @@ export default function HomePage({ navigation }) {
   }
 
   const openRating = async () => {
-    const connected = await checkInternetConnection(true)
+    const connected = await checkInternetConnection(true, true)
     if (connected) {
       navigation.navigate("RatingScreen")
     } else {
@@ -375,7 +381,7 @@ export default function HomePage({ navigation }) {
   }
 
   const openChat = async () => {
-    const connected = await checkInternetConnection(true)
+    const connected = await checkInternetConnection(true, true)
     if (connected) {
       navigation.navigate("ChatScreen")
     } else {
@@ -384,7 +390,7 @@ export default function HomePage({ navigation }) {
   }
 
   const openBattle = async () => {
-    const connected = await checkInternetConnection(true)
+    const connected = await checkInternetConnection(true, true)
     if (connected) {
       navigation.navigate("LobbyPongScreen")
     } else {
@@ -415,7 +421,7 @@ export default function HomePage({ navigation }) {
   // а затем при дальнейшем взаимодействии с приложением
   const postYourRating = async () => {
     console.log("Отправка прогресса в бд...")
-    const connected = await checkInternetConnection(true)
+    const connected = await checkInternetConnection(true, true)
     console.log(connected)
     if (connected) {
       try {

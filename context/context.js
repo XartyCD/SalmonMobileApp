@@ -10,7 +10,7 @@ export const AppContext = createContext();
 
 
 export const AppProvider = ({ children }) => {
-  const appVersion = "0.8.1"
+  const appVersion = "0.8.8"
   const [socket, setSocket] = useState("")
 
   // const CONNECTURL = "https://yaprikolist.ru/api"
@@ -18,6 +18,7 @@ export const AppProvider = ({ children }) => {
   // const CONNECTURL = 'https://4979-2604-6600-1c6-2000-8331-32a5-fd3f-f347.ngrok-free.app'
 
   const [user, setUser] = useState(null);
+  const [sessionId, setSessionId] = useState(null);
   const [blockedVersion, setBlockedVersion] = useState(false);
   const blockedVersionRef = useRef(blockedVersion);
 
@@ -29,6 +30,30 @@ export const AppProvider = ({ children }) => {
 
     return newSocket;
   };
+
+
+  // Вывод AsyncStorage в консоль (для отладки)
+  async function getAllDataFromAsyncStorage() {
+    try {
+      // Получаем все ключи
+      const keys = await AsyncStorage.getAllKeys();
+
+      // Получаем все пары ключ-значение
+      const result = await AsyncStorage.multiGet(keys);
+
+      // Преобразуем результат в объект для удобства использования
+      const allData = result.reduce((acc, [key, value]) => {
+        acc[key] = value;
+        return acc;
+      }, {});
+
+      console.log("Все данные из AsyncStorage:", allData);
+      return allData;
+    } catch (error) {
+      console.error("Ошибка при получении данных из AsyncStorage:", error);
+    }
+  }
+
 
 
   const loadData = async (key) => {
@@ -50,20 +75,28 @@ export const AppProvider = ({ children }) => {
     loadData('user').then(savedUser => {
       if (savedUser) setUser(savedUser);
     });
+    loadData('sessionId').then(savedSession => {
+      if (savedSession) setSessionId(savedSession);
+    });
   }, []);
 
   // Проверка интернета (вынесено через контекст)
-  const checkInternetConnection = async (needCheckVersion = false) => {
+  const checkInternetConnection = async (needCheckVersion = false, needCheckSession = false) => {
     const state = await NetInfo.fetch();
     if (state.isConnected) {
       if (needCheckVersion) {
+        let sessionRes // объявление чтобы по умолчанию была false
         console.log("Проверка инета (+ версии)")
         const res = await checkInfoApp()   // Автоматическая проверка версии после проверки интернета
+        if (needCheckSession) {
+          sessionRes = await checkSession()
+        }
 
-        if (res) {
+
+        if (res || sessionRes) {
           return false
         } else {
-          return true
+          return true // если все исправно
         }
       } else {
         console.log("Проверка инета")
@@ -106,13 +139,54 @@ export const AppProvider = ({ children }) => {
       }
 
     } catch (error) {
-      console.error('Ошибка при получения сообщений:', error);
+      console.error('Ошибка при проверке версии приложения:', error);
+    }
+  }
+
+
+  // Проверка id сессии (вынесено через контекст)
+  const checkSession = async () => {
+    try {
+      console.log(sessionId)
+      const response = await fetch(`${CONNECTURL}/checksessionid`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: user,
+          sessionId
+        }),
+      })
+
+      const data = await response.json();
+
+      if (data.message === "Сессия недействительна") {
+
+        console.log("Сессия недействительна")
+
+        // очищать локальные данные 
+        await AsyncStorage.clear()
+
+        // Сбрасываем состояния
+        setUser(null)
+
+        return true
+
+      } else {
+        console.log("Все хАрАшо")
+
+        return false
+      }
+
+    } catch (error) {
+      console.error('Ошибка при проверке id сессии:', error);
     }
   }
 
 
   return (
-    <AppContext.Provider value={{ appVersion, user, setUser, blockedVersion, blockedVersionRef, checkInfoApp, checkInternetConnection, socket, createSocket, CONNECTURL }}>
+    <AppContext.Provider value={{ getAllDataFromAsyncStorage, appVersion, user, setUser, sessionId, setSessionId, blockedVersion, blockedVersionRef, checkInfoApp, checkInternetConnection, socket, createSocket, CONNECTURL }}>
       {children}
     </AppContext.Provider>
   );

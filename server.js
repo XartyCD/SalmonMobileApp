@@ -18,11 +18,7 @@ const io = socketIo(server, {
 })
 
 const pool = mysql.createPool({
-  // connectionLimit: 100, // Устанавливаем лимит соединений
-  // host: '',
-  // user: 'root',
-  // password: '',
-  // database: 'SalmonGame'
+
   connectionLimit: 100, // Устанавливаем лимит соединений ;
   host: "localhost",
   user: "root",
@@ -79,7 +75,28 @@ app.post("/api/checkusers", (req, res) => {
     }
 
     if (results[0].count > 0) {
-      res.status(400).json({ success: "already user" })
+
+      const checkSessionId =
+        "SELECT sessionId FROM regUsers WHERE user = ?"
+      pool.query(checkSessionId, [checkedNewName], (error, results, fields) => {
+        if (error) {
+          console.error("Ошибка при смене статуса sessionId", error)
+          res.status(500).json({
+            success: false,
+            message: "Ошибка при смене статуса sessionId",
+          })
+          return
+        }
+
+        if (results[0].sessionId === "0") {
+          res.status(400).json({ success: "Ожидание ключа" }) // Пропуск как при обычной авторизации
+
+        } else {
+          res.status(200).json({ success: "already user" }) // Пропуск как при забытии аккаунта
+        }
+      })
+
+
     } else {
       res.status(200).json({ success: true })
     }
@@ -87,7 +104,7 @@ app.post("/api/checkusers", (req, res) => {
 })
 
 app.post("/api/register", (req, res) => {
-  const { checkedNewName, secretKey } = req.body
+  const { checkedNewName, secretKey, sessionId } = req.body
   console.log(checkedNewName, secretKey)
   const query = "SELECT COUNT(*) AS count FROM regUsers WHERE user =?"
   pool.query(query, [checkedNewName], (error, results, fields) => {
@@ -100,19 +117,15 @@ app.post("/api/register", (req, res) => {
     if (results[0].count > 0) {
       res.status(400).json({ success: false })
     } else {
-
-      // Регистрация нового пользователя
-      const inActive = true
-
       const getCurrentTimeFormatted = () =>
         new Date().toISOString().replace("T", " ").slice(0, 19)
       const currentTime = getCurrentTimeFormatted() // Например: 2024-09-17 14:35:22
 
       const insertQuery =
-        "INSERT INTO regUsers (user, secretKey, inActive, regTime) VALUES (?, ?, ?, ?)"
+        "INSERT INTO regUsers (user, secretKey, sessionId, regTime) VALUES (?, ?, ?, ?)"
       pool.query(
         insertQuery,
-        [checkedNewName, secretKey, inActive, currentTime],
+        [checkedNewName, secretKey, sessionId, currentTime],
         (error, results, fields) => {
           if (error) {
             console.error("Ошибка при выполнении запроса:", error)
@@ -127,7 +140,7 @@ app.post("/api/register", (req, res) => {
 
       const balance = 0
       const countTap = 0
-      const insertQuery2 = `INSERT INTO userRating (user, balance, countTap) VALUES (?, ?, ?, ?)`
+      const insertQuery2 = `INSERT INTO userRating (user, balance, countTap) VALUES (?, ?, ?)`
 
       pool.query(insertQuery2, [checkedNewName, balance, countTap], (error, results) => {
         if (error) {
@@ -146,8 +159,8 @@ app.post("/api/register", (req, res) => {
 })
 
 app.post("/api/confirmsecretkey", (req, res) => {
-  const { username, key } = req.body
-  const query = "SELECT secretKey, inActive FROM regUsers WHERE BINARY user = ?"
+  const { username, key, sessionId } = req.body
+  const query = "SELECT secretKey, sessionId FROM regUsers WHERE BINARY user = ?"
 
   pool.query(query, [username], (error, results, fields) => {
     if (error) {
@@ -159,20 +172,24 @@ app.post("/api/confirmsecretkey", (req, res) => {
     if (results.length === 1) {
 
       if (key === results[0].secretKey) {
-        if (results[0].inActive === "0") {
-          const updateInActive =
-            "UPDATE regUsers SET inActive = 1 WHERE user = ?"
-          pool.query(updateInActive, [username], (error, results, fields) => {
+        if (results[0].sessionId === "0") {
+          const updateSessionId =
+            "UPDATE regUsers SET sessionId = ? WHERE user = ?"
+          pool.query(updateSessionId, [sessionId, username], (error, results, fields) => {
             if (error) {
-              console.error("Ошибка при смене статуса inActive", error)
+              console.error("Ошибка при смене статуса sessionId", error)
               res.status(500).json({
                 success: false,
-                message: "Ошибка при смене статуса inActive",
+                message: "Ошибка при смене статуса sessionId",
               })
               return
             }
           })
           res.status(200).json({ message: "Успешная авторизация", success: true })
+
+        } else if (results[0].sessionId === sessionId) {
+          res.status(200).json({ message: "Перегенерировать ключ", success: true })
+
         } else {
           res.status(200).json({ message: "Аккаунт уже используется", success: true })
         }
@@ -228,12 +245,12 @@ app.post("/api/leave-account", (req, res) => {
       return
     }
 
-    // Заменить inActive на 0
-    const leaveQuery = `UPDATE regUsers SET inActive = 0 WHERE user = ?`
+    // Заменить sessionId на 0
+    const leaveQuery = `UPDATE regUsers SET sessionId = 0 WHERE user = ?`
 
     pool.query(leaveQuery, [user], (error, results) => {
       if (error) {
-        console.error("Ошибка при замене inActive при выходе:", error)
+        console.error("Ошибка при замене sessionId при выходе:", error)
         res.status(500).json({ success: false, message: "Ошибка выхода" })
         return
       }
@@ -274,6 +291,71 @@ app.delete("/api/delete-account", (req, res) => {
 })
 
 // API УДАЛЕНИЕ АККАУНТА
+
+
+
+//API ПРОВЕРКИ ЧТО УНИКАЛЬНЫЙ ID ВСЕ ЕЩЕ В БАЗЕ (ДЛЯ АВТОРИЗОВАННЫХ)
+
+app.post("/api/checksessionid", (req, res) => {
+  const { username, sessionId } = req.body
+  const query = "SELECT sessionId FROM regUsers WHERE user = ?"
+  pool.query(query, [username], (error, results, fields) => {
+    if (error) {
+      console.error("Ошибка при выполнении запроса:", error)
+      res.status(500).json({ success: false })
+      return
+    }
+
+    if (results[0].sessionId != sessionId) {
+      res.status(400).json({ message: "Сессия недействительна" })
+    } else {
+      res.status(200).json({ success: true })
+    }
+  })
+})
+
+//API ПРОВЕРКИ ЧТО УНИКАЛЬНЫЙ ID ВСЕ ЕЩЕ В БАЗЕ (ДЛЯ АВТОРИЗОВАННЫХ)
+
+
+// API ДЛЯ ВЫБРОСА ИЗ АККАУНТА
+
+app.post("/api/forgotaccount", (req, res) => {
+  const { username, key, sessionId } = req.body
+  const query = "SELECT secretKey FROM regUsers WHERE user = ?"
+
+  pool.query(query, [username], (error, results, fields) => {
+    if (error) {
+      console.error("Ошибка при выполнении запроса:", error)
+      res.status(500).json({ message: "Произошла ошибка при аутентификации" })
+      return
+    }
+
+    if (results.length === 1) {
+
+      if (key === results[0].secretKey) {
+        const updateSessionId = "UPDATE regUsers SET sessionId = ? WHERE user = ?"
+        pool.query(updateSessionId, [sessionId, username], (error, results, fields) => {
+          if (error) {
+            console.error("Ошибка при смене sessionId", error)
+            res.status(500).json({
+              success: false,
+              message: "Ошибка при смене sessionId",
+            })
+            return
+          }
+        })
+        res.status(200).json({ message: "Успешное восстановление", success: true })
+      } else {
+        res.status(200).json({ message: "Неверный ключ", success: true })
+      }
+    } else {
+      res.status(200).json({ message: "Пользователь не найден" })
+    }
+  })
+})
+
+// API ДЛЯ ВЫБРОСА ИЗ АККАУНТА
+
 
 // API РЕЙТИНГА
 
